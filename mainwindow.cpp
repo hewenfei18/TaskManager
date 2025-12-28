@@ -3,43 +3,56 @@
 #include "databasemanager.h"
 #include "pdfexporter.h"
 #include "csvexporter.h"
+#include "tasktablemodel.h"
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QComboBox>
 #include <QDateTimeEdit>
 #include <QFormLayout>
 #include <QDialogButtonBox>
+#include <QDateTime>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_taskModel(new TaskTableModel(this))
     , m_proxyModel(new QSortFilterProxyModel(this))
+    , m_remindTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
-    // 配置代理模型 - 修复顺序 + 新增关键配置
+    // 代理模型配置
     m_proxyModel->setSourceModel(m_taskModel);
-    m_proxyModel->setFilterKeyColumn(-1); // 过滤所有列
-    m_proxyModel->setFilterRole(Qt::DisplayRole); // 先设置过滤角色（关键：移到这里，提前生效）
-    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive); // 忽略大小写，提高兼容性
+    m_proxyModel->setFilterKeyColumn(-1);
+    m_proxyModel->setFilterRole(Qt::DisplayRole);
+    m_proxyModel->setFilterCaseSensitivity(Qt::CaseInsensitive);
     ui->tableViewTasks->setModel(m_proxyModel);
 
-    // 设置表格属性
+    // 表格属性设置
     ui->tableViewTasks->setSelectionBehavior(QAbstractItemView::SelectRows);
     ui->tableViewTasks->setSelectionMode(QAbstractItemView::SingleSelection);
     ui->tableViewTasks->resizeColumnsToContents();
     ui->tableViewTasks->horizontalHeader()->setStretchLastSection(true);
 
-    // 初始化筛选下拉框
+    // 筛选下拉框初始化
     ui->comboCategoryFilter->addItems({"全部", "工作", "学习", "生活", "其他"});
     ui->comboPriorityFilter->addItems({"全部", "高", "中", "低"});
     ui->comboStatusFilter->addItems({"全部", "未完成", "已完成"});
 
-    // 更新统计面板
-    updateStatisticPanel();
+    // 定时提醒控件初始化
+    ui->spinBoxRemindMinutes->setRange(0, 1440);
+    ui->spinBoxRemindMinutes->setValue(30);
+    ui->spinBoxCheckInterval->setRange(10, 300);
+    ui->spinBoxCheckInterval->setValue(30);
+    ui->checkBoxRemindEnable->setChecked(true);
 
-    // 连接模型数据变化信号到统计面板更新
+    // 定时器绑定与启动
+    connect(m_remindTimer, &QTimer::timeout, this, &MainWindow::checkRemindTasks);
+    m_remindTimer->setInterval(ui->spinBoxCheckInterval->value() * 1000);
+    m_remindTimer->start();
+
+    // 统计面板更新绑定
+    updateStatisticPanel();
     connect(m_taskModel, &QAbstractTableModel::dataChanged, this, &MainWindow::updateStatisticPanel);
     connect(m_taskModel, &QAbstractTableModel::modelReset, this, &MainWindow::updateStatisticPanel);
 }
@@ -64,14 +77,12 @@ void MainWindow::on_btnAdd_clicked()
 
 void MainWindow::on_btnEdit_clicked()
 {
-    // 获取选中行
     QModelIndex proxyIndex = ui->tableViewTasks->currentIndex();
     if (!proxyIndex.isValid()) {
         QMessageBox::warning(this, "提示", "请先选中要编辑的任务！");
         return;
     }
 
-    // 转换为源模型索引
     QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
     Task task = m_taskModel->getTaskAt(sourceIndex.row());
     if (task.id == -1) {
@@ -83,6 +94,8 @@ void MainWindow::on_btnEdit_clicked()
         if (DatabaseManager::instance().updateTask(task)) {
             m_taskModel->refreshTasks();
             QMessageBox::information(this, "成功", "任务编辑成功！");
+            // 编辑任务后，清除该任务的提醒标记，以便重新判断是否需要提醒
+            m_remindedTaskIds.remove(task.id);
         } else {
             QMessageBox::critical(this, "失败", "任务编辑失败，请查看日志！");
         }
@@ -91,14 +104,12 @@ void MainWindow::on_btnEdit_clicked()
 
 void MainWindow::on_btnDelete_clicked()
 {
-    // 获取选中行
     QModelIndex proxyIndex = ui->tableViewTasks->currentIndex();
     if (!proxyIndex.isValid()) {
-        QMessageBox::warning(this, "提示", "请先选中要编辑的任务！");
+        QMessageBox::warning(this, "提示", "请先选中要删除的任务！");
         return;
     }
 
-    // 转换为源模型索引
     QModelIndex sourceIndex = m_proxyModel->mapToSource(proxyIndex);
     Task task = m_taskModel->getTaskAt(sourceIndex.row());
     if (task.id == -1) {
@@ -106,7 +117,6 @@ void MainWindow::on_btnDelete_clicked()
         return;
     }
 
-    // 二次确认
     int ret = QMessageBox::question(this, "确认删除", QString("是否确定删除任务「%1」？").arg(task.title),
                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret != QMessageBox::Yes) {
@@ -116,6 +126,8 @@ void MainWindow::on_btnDelete_clicked()
     if (DatabaseManager::instance().deleteTask(task.id)) {
         m_taskModel->refreshTasks();
         QMessageBox::information(this, "成功", "任务删除成功！");
+        // 删除任务后，清除该任务的提醒标记
+        m_remindedTaskIds.remove(task.id);
     } else {
         QMessageBox::critical(this, "失败", "任务删除失败，请查看日志！");
     }
@@ -123,7 +135,7 @@ void MainWindow::on_btnDelete_clicked()
 
 void MainWindow::on_btnRefreshFilter_clicked()
 {
-    applyFilter(); // 此处信号槽绑定正常，按钮点击会触发
+    applyFilter();
 }
 
 void MainWindow::on_btnExportPdf_clicked()
@@ -176,7 +188,6 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     dialog.setModal(true);
     dialog.resize(400, 350);
 
-    // 创建控件
     QLineEdit* editTitle = new QLineEdit(&dialog);
     editTitle->setText(task.title);
 
@@ -209,7 +220,6 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
     connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-    // 布局
     QFormLayout* layout = new QFormLayout(&dialog);
     layout->addRow("标题：", editTitle);
     layout->addRow("分类：", comboCategory);
@@ -219,7 +229,6 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     layout->addRow("备注：", editDescription);
     layout->addWidget(buttonBox);
 
-    // 验证标题非空
     if (dialog.exec() == QDialog::Accepted) {
         if (editTitle->text().trimmed().isEmpty()) {
             QMessageBox::warning(this, "提示", "任务标题不能为空！");
@@ -239,17 +248,12 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     return false;
 }
 
-// ########### 核心修复：彻底重构applyFilter函数 ###########
 void MainWindow::applyFilter()
 {
     QString categoryFilter = ui->comboCategoryFilter->currentText();
     QString priorityFilter = ui->comboPriorityFilter->currentText();
     QString statusFilter = ui->comboStatusFilter->currentText();
 
-    // 1. 修复：状态筛选不再转换为"0"/"1"，直接使用中文字符串（与模型DisplayRole一致）
-    QString statusText = statusFilter; // 直接获取"未完成"/"已完成"
-
-    // 2. 构建过滤文本（兼容多条件同时筛选）
     QStringList filterParts;
     if (categoryFilter != "全部") {
         filterParts.append(categoryFilter);
@@ -258,16 +262,123 @@ void MainWindow::applyFilter()
         filterParts.append(priorityFilter);
     }
     if (statusFilter != "全部") {
-        filterParts.append(statusText); // 添加状态中文文本
+        filterParts.append(statusFilter);
     }
 
-    // 3. 修复：使用模糊匹配（*表示任意字符），解决精确匹配导致的筛选失效
-    QString filterText = filterParts.join("*"); // 多条件用*连接，支持模糊匹配
+    QString filterText = filterParts.join("*");
     m_proxyModel->setFilterWildcard(QString("*%1*").arg(filterText));
-
-    // 4. 确保过滤角色生效（此处可再次设置，双重保障）
     m_proxyModel->setFilterRole(Qt::DisplayRole);
-
-    // 刷新表格
     ui->tableViewTasks->resizeColumnsToContents();
+}
+
+// 核心修正：仅提醒即将到期任务，完全过滤已逾期任务
+void MainWindow::checkRemindTasks()
+{
+    QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
+    QList<Task> needRemindTasks; // 仅存储即将到期的任务（不包含已逾期）
+    QDateTime currentTime = QDateTime::currentDateTime();
+    int remindMinutes = ui->spinBoxRemindMinutes->value();
+    qint64 remindSeconds = (qint64)remindMinutes * 60; // 提前提醒时长（秒）
+
+    // 先清除已到期/已完成任务的提醒标记（避免标记残留）
+    QList<int> needRemoveIds;
+    for (int taskId : m_remindedTaskIds) {
+        bool isTaskValid = false;
+        bool isExpired = false;
+        bool isCompleted = false;
+
+        for (const Task& task : allTasks) {
+            if (task.id == taskId) {
+                isTaskValid = true;
+                isExpired = (currentTime > task.dueTime);
+                isCompleted = (task.status == 1);
+                break;
+            }
+        }
+
+        // 任务无效（已删除）、已逾期、已完成，都清除提醒标记
+        if (!isTaskValid || isExpired || isCompleted) {
+            needRemoveIds.append(taskId);
+        }
+    }
+    // 批量移除无效标记
+    for (int taskId : needRemoveIds) {
+        m_remindedTaskIds.remove(taskId);
+    }
+
+    // 筛选即将到期的任务
+    for (const Task& task : allTasks) {
+        // 过滤条件：1. 未完成 2. 未被重复提醒 3. 未逾期（核心：只处理即将到期任务）
+        if (task.status == 1 || m_remindedTaskIds.contains(task.id)) {
+            continue;
+        }
+
+        // 计算当前时间到任务截止时间的差值（秒）：currentTime -> task.dueTime
+        qint64 timeDiffSeconds = currentTime.secsTo(task.dueTime);
+
+        // 仅保留「即将到期」条件：0 < 时间差 ≤ 提前提醒时长（例如：剩余1~30分钟）
+        // 完全排除 timeDiffSeconds ≤ 0（已逾期）的任务
+        bool willExpireSoon = (timeDiffSeconds > 0 && timeDiffSeconds <= remindSeconds);
+        if (willExpireSoon) {
+            needRemindTasks.append(task);
+            m_remindedTaskIds.insert(task.id); // 标记为已提醒，避免重复弹窗
+        }
+    }
+
+    // 有即将到期任务时，显示弹窗
+    if (!needRemindTasks.isEmpty()) {
+        showRemindDialog(needRemindTasks);
+    }
+}
+
+// 优化：仅显示即将到期任务的提醒信息，无已逾期相关描述
+void MainWindow::showRemindDialog(const QList<Task>& remindTasks)
+{
+    QString remindTitle = "即将到期任务提醒"; // 标题明确为即将到期
+    QString remindContent = "发现以下任务即将到期，请及时处理：\n\n";
+
+    for (const Task& task : remindTasks) {
+        QDateTime currentTime = QDateTime::currentDateTime();
+        qint64 timeDiffSeconds = currentTime.secsTo(task.dueTime);
+        QString taskStatus;
+
+        // 此时必然是即将到期（已过滤已逾期），计算剩余时长
+        qint64 remainMinutes = timeDiffSeconds / 60;
+        qint64 remainSeconds = timeDiffSeconds % 60;
+
+        // 精准显示剩余时长（分+秒）
+        if (remainMinutes <= 0) {
+            taskStatus = QString("即将到期，剩余 %1 秒").arg(timeDiffSeconds);
+        } else {
+            taskStatus = QString("即将到期，剩余 %1 分 %2 秒").arg(remainMinutes).arg(remainSeconds);
+        }
+
+        // 拼接任务信息，仅展示即将到期状态
+        remindContent += QString("• 标题：%1\n  分类：%2\n  截止时间：%3\n  状态：%4\n\n")
+                             .arg(task.title)
+                             .arg(task.category)
+                             .arg(task.dueTime.toString("yyyy-MM-dd HH:mm"))
+                             .arg(taskStatus);
+    }
+
+    QMessageBox::information(this, remindTitle, remindContent);
+}
+
+void MainWindow::on_checkBoxRemindEnable_toggled(bool checked)
+{
+    if (checked) {
+        int interval = ui->spinBoxCheckInterval->value() * 1000;
+        m_remindTimer->setInterval(interval);
+        m_remindTimer->start();
+    } else {
+        m_remindTimer->stop();
+        m_remindedTaskIds.clear(); // 禁用提醒时，清空所有提醒标记
+    }
+}
+
+void MainWindow::on_spinBoxCheckInterval_valueChanged(int value)
+{
+    if (ui->checkBoxRemindEnable->isChecked()) {
+        m_remindTimer->setInterval(value * 1000);
+    }
 }

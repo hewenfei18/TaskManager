@@ -1,4 +1,5 @@
 #include "tasktablemodel.h"
+#include "databasemanager.h"
 #include <QDateTime>
 #include <QBrush>
 #include <QFont>
@@ -28,33 +29,29 @@ QVariant TaskTableModel::data(const QModelIndex &index, int role) const
     }
 
     const Task& task = m_taskList.at(index.row());
-    // 统一状态文本（与MainWindow下拉框完全一致）
     QString statusText = task.status == 1 ? "已完成" : "未完成";
 
     switch (role) {
-    // 显示角色：返回中文，用于表格显示和筛选匹配
     case Qt::DisplayRole:
         switch (index.column()) {
         case ColumnTitle: return task.title;
         case ColumnCategory: return task.category;
         case ColumnPriority: return task.priority;
         case ColumnDueTime: return task.dueTime.toString("yyyy-MM-dd HH:mm");
-        case ColumnStatus: return statusText; // 关键：返回中文
+        case ColumnStatus: return statusText;
         case ColumnDescription: return task.description;
         default: return QVariant();
         }
-    // 编辑角色：与DisplayRole一致，支持筛选和编辑
     case Qt::EditRole:
         switch (index.column()) {
         case ColumnTitle: return task.title;
         case ColumnCategory: return task.category;
         case ColumnPriority: return task.priority;
         case ColumnDueTime: return task.dueTime.toString("yyyy-MM-dd HH:mm");
-        case ColumnStatus: return statusText; // 关键：与DisplayRole一致
+        case ColumnStatus: return statusText;
         case ColumnDescription: return task.description;
         default: return QVariant();
         }
-    // 原有颜色逻辑，不变
     case Qt::ForegroundRole:
         if (index.column() == ColumnPriority) {
             if (task.priority == "高") return QBrush(Qt::red);
@@ -65,13 +62,11 @@ QVariant TaskTableModel::data(const QModelIndex &index, int role) const
             return QBrush(Qt::red);
         }
         return QVariant();
-    // 原有字体逻辑，不变
     case Qt::FontRole:
         if (index.column() == ColumnTitle && task.status == 0 && task.dueTime <= QDateTime::currentDateTime()) {
             QFont f; f.setBold(true); return f;
         }
         return QVariant();
-    // 原有对齐逻辑，不变
     case Qt::TextAlignmentRole:
         return QVariant::fromValue(Qt::AlignVCenter | Qt::AlignLeft);
     default:
@@ -130,7 +125,6 @@ bool TaskTableModel::setData(const QModelIndex &index, const QVariant &value, in
         }
         break;
     }
-    // 兼容中文和整型输入
     case ColumnStatus: {
         QString input = value.toString().trimmed();
         if (input == "已完成" || input == "1") {

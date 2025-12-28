@@ -1,55 +1,47 @@
 #ifndef DATABASEMANAGER_H
 #define DATABASEMANAGER_H
 
+#include <QObject>
 #include <QSqlDatabase>
 #include <QSqlQuery>
-#include <QList>
+#include <QSqlError>
 #include <QDateTime>
+#include <QList>
+#include <QString> // 补充QString头文件
 
-// 任务结构体
-struct Task
-{
+struct Task {
     int id = -1;
     QString title;
     QString category;
     QString priority;
     QDateTime dueTime;
-    int status = 0; // 0=未完成，1=已完成
+    int status = 0; // 0:未完成 1:已完成
     QString description;
 };
 
-// 单例数据库管理类
-class DatabaseManager
+class DatabaseManager : public QObject
 {
+    Q_OBJECT
+private:
+    explicit DatabaseManager(QObject *parent = nullptr);
+    QSqlDatabase m_db; // 补充m_db成员（之前遗漏）
+    static QSqlDatabase getThreadSafeDatabase();
+
 public:
-    // 获取单例实例
     static DatabaseManager& instance();
+    DatabaseManager(const DatabaseManager&) = delete;
+    void operator=(const DatabaseManager&) = delete;
 
-    // 初始化数据库（创建表）
     bool init();
-
-    // CRUD接口
-    bool addTask(const Task& task);
-    bool updateTask(const Task& task);
-    bool deleteTask(int taskId);
     QList<Task> getAllTasks();
     QList<Task> getOverdueUncompletedTasks();
-
-    // 统计接口
     int getTotalTaskCount();
     int getCompletedTaskCount();
     int getOverdueUncompletedCount();
-    QString getCompletionRate();
-
-private:
-    // 私有构造函数（单例模式）
-    DatabaseManager();
-    // 禁止拷贝构造和赋值
-    DatabaseManager(const DatabaseManager&) = delete;
-    DatabaseManager& operator=(const DatabaseManager&) = delete;
-
-    // 数据库对象
-    QSqlDatabase m_db;
+    bool addTask(const Task& task);
+    bool updateTask(const Task& task);
+    bool deleteTask(int taskId);
+    QString getCompletionRate(); // 补充getCompletionRate方法声明
 };
 
 #endif // DATABASEMANAGER_H

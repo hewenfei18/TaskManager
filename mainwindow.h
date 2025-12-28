@@ -9,11 +9,15 @@
 #include <QDateTimeEdit>
 #include <QTextEdit>
 #include <QCheckBox>
-#include "tasktablemodel.h"
+#include <QTimer>
+#include <QSet>
+#include "databasemanager.h" // 包含这个头文件，直接使用其中的Task结构体
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+class TaskTableModel;
 
 class MainWindow : public QMainWindow
 {
@@ -24,32 +28,28 @@ public:
     ~MainWindow() override;
 
 private slots:
-    // 按钮点击槽函数
     void on_btnAdd_clicked();
     void on_btnEdit_clicked();
     void on_btnDelete_clicked();
     void on_btnRefreshFilter_clicked();
     void on_btnExportPdf_clicked();
     void on_btnExportCsv_clicked();
-
-    // 逾期任务提醒槽函数
     void handleOverdueTasks(const QList<Task>& overdueTasks);
-
-    // 更新统计面板
     void updateStatisticPanel();
+    void checkRemindTasks();
+    void on_checkBoxRemindEnable_toggled(bool checked);
+    void on_spinBoxCheckInterval_valueChanged(int value);
 
 private:
     Ui::MainWindow *ui;
-    // 任务表格模型
     TaskTableModel* m_taskModel;
-    // 筛选代理模型
     QSortFilterProxyModel* m_proxyModel;
+    QTimer* m_remindTimer;
+    QSet<int> m_remindedTaskIds;
 
-    // 显示添加/编辑任务对话框
     bool showTaskDialog(Task& task, bool isEdit = false);
-
-    // 应用筛选条件
     void applyFilter();
+    void showRemindDialog(const QList<Task>& remindTasks);
 };
 
 #endif // MAINWINDOW_H
