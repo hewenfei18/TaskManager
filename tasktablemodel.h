@@ -9,7 +9,7 @@ class TaskTableModel : public QAbstractTableModel
 {
     Q_OBJECT
 public:
-    // 构造函数声明（仅写一次）
+    // 构造函数声明
     explicit TaskTableModel(QObject *parent = nullptr);
 
     // 核心方法声明
@@ -20,7 +20,7 @@ public:
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
-    // ========== 补全 setTaskList 方法声明 ==========
+    // 补全 setTaskList 方法声明
     void setTaskList(const QList<Task> &taskList);
 
     // 其他方法声明

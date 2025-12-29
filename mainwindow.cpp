@@ -4,6 +4,7 @@
 #include "tasktablemodel.h"
 #include "archivedialog.h"
 #include "statisticdialog.h"
+#include "reminderworker.h"
 #include <QMessageBox>
 #include <QDialog>
 #include <QFormLayout>
@@ -14,6 +15,7 @@
 #include <QPushButton>
 #include <QSpinBox>
 #include <QHeaderView>
+#include <QThread>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -49,21 +51,116 @@ MainWindow::MainWindow(QWidget *parent)
     // 更新统计面板
     updateStatisticPanel();
 
-    // 原有功能信号槽
+    // ========== 初始化提醒相关参数（严格匹配UI组件名称） ==========
+    // 提醒开关：checkBoxRemindEnable
+    m_reminderEnabled = (ui->checkBoxRemindEnable->checkState() == Qt::Checked);
+    // 提前提醒分钟数：spinBoxRemindMinutes
+    m_reminderMinutes = ui->spinBoxRemindMinutes->value();
+    // 检查频率（秒）：spinBoxCheckInterval
+    int checkInterval = ui->spinBoxCheckInterval->value();
+
+    // 绑定提醒开关状态变更槽函数
+    connect(ui->checkBoxRemindEnable, &QCheckBox::checkStateChanged, this, &MainWindow::on_reminderEnabledChanged);
+    // 绑定提前提醒时间变更槽函数
+    connect(ui->spinBoxRemindMinutes, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::on_reminderMinutesChanged);
+    // 绑定检查频率变更槽函数
+    connect(ui->spinBoxCheckInterval, QOverload<int>::of(&QSpinBox::valueChanged), this, [=](int interval) {
+        // 获取提醒工作线程中的定时器并更新间隔
+        QThread* reminderThread = nullptr;
+        ReminderWorker* reminderWorker = nullptr;
+        // 遍历子对象找到ReminderWorker
+        for (QObject* obj : children()) {
+            if (obj->isWidgetType()) continue;
+            QThread* t = qobject_cast<QThread*>(obj);
+            if (t) {
+                for (QObject* workerObj : t->children()) {
+                    reminderWorker = qobject_cast<ReminderWorker*>(workerObj);
+                    if (reminderWorker) {
+                        reminderThread = t;
+                        break;
+                    }
+                }
+            }
+            if (reminderWorker) break;
+        }
+        if (reminderWorker) {
+            reminderWorker->setCheckInterval(interval * 1000); // 秒转毫秒
+        }
+    });
+
+    // ========== 初始化定时提醒功能（线程安全模式） ==========
+    QThread* reminderThread = new QThread(this);
+    ReminderWorker* reminderWorker = new ReminderWorker();
+    reminderWorker->setUpcomingReminderThreshold(m_reminderMinutes);
+    reminderWorker->setCheckInterval(checkInterval * 1000); // 设置检查频率（毫秒）
+    reminderWorker->moveToThread(reminderThread);
+    // 线程信号绑定
+    connect(reminderThread, &QThread::started, reminderWorker, &ReminderWorker::startChecking);
+    connect(this, &MainWindow::destroyed, reminderWorker, &ReminderWorker::stop);
+    connect(this, &MainWindow::destroyed, reminderThread, &QThread::quit);
+    connect(reminderThread, &QThread::finished, reminderWorker, &ReminderWorker::deleteLater);
+    connect(reminderThread, &QThread::finished, reminderThread, &QThread::deleteLater);
+    // 绑定任务更新信号到重置提醒记录
+    connect(this, &MainWindow::taskUpdated, reminderWorker, &ReminderWorker::resetRemindedTasks);
+    // 绑定提醒开关状态变更信号
+    connect(this, &MainWindow::reminderEnabledChanged, reminderWorker, [=](bool enabled) {
+        if (enabled) {
+            reminderWorker->startChecking();
+        } else {
+            reminderWorker->stop();
+            reminderWorker->resetRemindedTasks(); // 关闭时重置记录
+        }
+    });
+    // 绑定提醒提前时间变更信号
+    connect(this, &MainWindow::reminderEnabledChanged, reminderWorker, [=](bool enabled) {
+        Q_UNUSED(enabled);
+        reminderWorker->setUpcomingReminderThreshold(m_reminderMinutes);
+    });
+
+    // 绑定逾期任务提醒信号（新增开关判断）
+    connect(reminderWorker, &ReminderWorker::taskOverdue, this, [=](const QList<Task>& overdueTasks) {
+        if (!m_reminderEnabled) return; // 未启用提醒则不弹出
+        QString tipText = QString("检测到%1个逾期未完成任务：\n").arg(overdueTasks.count());
+        for (const Task& task : overdueTasks) {
+            tipText += QString("- %1（截止时间：%2）\n").arg(task.title).arg(task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
+        }
+        QMessageBox::warning(this, "逾期任务提醒", tipText);
+    });
+
+    // 绑定即将到期任务提醒信号（新增开关判断）
+    connect(reminderWorker, &ReminderWorker::taskUpcoming, this, [=](const QList<Task>& upcomingTasks) {
+        if (!m_reminderEnabled) return; // 未启用提醒则不弹出
+        QString tipText = QString("检测到%1个即将到期任务：\n").arg(upcomingTasks.count());
+        for (const Task& task : upcomingTasks) {
+            tipText += QString("- %1（优先级：%2，截止时间：%3）\n")
+                           .arg(task.title)
+                           .arg(task.priority)
+                           .arg(task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
+        }
+        QMessageBox::information(this, "即将到期任务提醒", tipText);
+    });
+
+    // 启动子线程（初始状态：若开关未启用则不检查）
+    reminderThread->start();
+    if (!m_reminderEnabled) {
+        reminderWorker->stop();
+    }
+
+    // 原有功能信号槽（全部匹配UI组件名称）
     connect(ui->btnAdd, &QPushButton::clicked, this, &MainWindow::onBtnAddClicked);
     connect(ui->btnEdit, &QPushButton::clicked, this, &MainWindow::onBtnEditClicked);
     connect(ui->btnDelete, &QPushButton::clicked, this, &MainWindow::onBtnDeleteClicked);
     connect(ui->btnExportPdf, &QPushButton::clicked, this, &MainWindow::onBtnExportPdfClicked);
     connect(ui->btnExportCsv, &QPushButton::clicked, this, &MainWindow::onBtnExportCsvClicked);
 
-    // 筛选相关信号槽
+    // 筛选相关信号槽（全部匹配UI组件名称）
     connect(ui->comboCategoryFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
     connect(ui->comboPriorityFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
     connect(ui->comboStatusFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
     connect(ui->comboTagFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
     connect(ui->btnRefreshFilter, &QPushButton::clicked, this, &MainWindow::onBtnRefreshFilterClicked);
 
-    // 归档、报表、搜索信号槽
+    // 归档、报表、搜索信号槽（全部匹配UI组件名称）
     connect(ui->btnArchiveCompleted, &QPushButton::clicked, this, &MainWindow::on_btnArchiveCompleted_clicked);
     connect(ui->btnViewArchive, &QPushButton::clicked, this, &MainWindow::on_btnViewArchive_clicked);
     connect(ui->btnSearch, &QPushButton::clicked, this, &MainWindow::on_btnSearch_clicked);
@@ -76,31 +173,49 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+// 提醒开关状态变更槽函数
+void MainWindow::on_reminderEnabledChanged(int state)
+{
+    m_reminderEnabled = (state == Qt::Checked);
+    emit reminderEnabledChanged(m_reminderEnabled);
+}
+
+// 提醒提前时间变更槽函数
+void MainWindow::on_reminderMinutesChanged(int minutes)
+{
+    m_reminderMinutes = minutes;
+    emit reminderEnabledChanged(m_reminderEnabled); // 触发时间更新
+}
+
+// 初始化筛选下拉框
 void MainWindow::initFilterComboBoxes()
 {
-    // 分类筛选
+    // 分类筛选：comboCategoryFilter
     ui->comboCategoryFilter->clear();
     ui->comboCategoryFilter->addItem("全部分类");
     ui->comboCategoryFilter->addItems({"工作", "学习", "生活", "其他"});
 
-    // 优先级筛选
+    // 优先级筛选：comboPriorityFilter
     ui->comboPriorityFilter->clear();
     ui->comboPriorityFilter->addItem("全部优先级");
     ui->comboPriorityFilter->addItems({"高", "中", "低"});
 
-    // 状态筛选
+    // 状态筛选：comboStatusFilter
     ui->comboStatusFilter->clear();
     ui->comboStatusFilter->addItem("全部状态");
-    ui->comboStatusFilter->addItems({"未完成", "已完成"});
+    ui->comboStatusFilter->addItems({"未完成", "已完成", "未完成（已超期）"});
 }
 
+// 初始化标签筛选下拉框
 void MainWindow::initTagFilter()
 {
+    // 标签筛选：comboTagFilter
     ui->comboTagFilter->clear();
     ui->comboTagFilter->addItem("全部标签");
     ui->comboTagFilter->addItems(DatabaseManager::instance().getAllDistinctTags());
 }
 
+// 更新统计面板
 void MainWindow::updateStatisticPanel()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -117,11 +232,13 @@ void MainWindow::updateStatisticPanel()
         }
     }
 
+    // 统计标签：labelTotal、labelCompleted、labelOverdue
     ui->labelTotal->setText(QString("总任务：%1").arg(total));
     ui->labelCompleted->setText(QString("已完成：%1").arg(completed));
     ui->labelOverdue->setText(QString("逾期：%1").arg(overdue));
 }
 
+// 添加任务按钮点击事件
 void MainWindow::onBtnAddClicked()
 {
     Task task;
@@ -129,9 +246,11 @@ void MainWindow::onBtnAddClicked()
         m_taskModel->refreshTasks();
         updateStatisticPanel();
         initTagFilter();
+        emit taskUpdated(); // 触发任务更新，重置提醒记录
     }
 }
 
+// 编辑任务按钮点击事件
 void MainWindow::onBtnEditClicked()
 {
     QModelIndex index = ui->tableViewTasks->currentIndex();
@@ -145,9 +264,11 @@ void MainWindow::onBtnEditClicked()
         m_taskModel->refreshTasks();
         updateStatisticPanel();
         initTagFilter();
+        emit taskUpdated(); // 触发任务更新，重置提醒记录
     }
 }
 
+// 删除任务按钮点击事件
 void MainWindow::onBtnDeleteClicked()
 {
     QModelIndex index = ui->tableViewTasks->currentIndex();
@@ -168,11 +289,13 @@ void MainWindow::onBtnDeleteClicked()
         m_taskModel->refreshTasks();
         updateStatisticPanel();
         initTagFilter();
+        emit taskUpdated(); // 触发任务更新，重置提醒记录
     } else {
         QMessageBox::critical(this, "失败", "任务删除失败！");
     }
 }
 
+// 刷新筛选按钮点击事件
 void MainWindow::onBtnRefreshFilterClicked()
 {
     m_taskModel->refreshTasks();
@@ -180,17 +303,19 @@ void MainWindow::onBtnRefreshFilterClicked()
     initTagFilter();
 }
 
+// 导出PDF按钮点击事件
 void MainWindow::onBtnExportPdfClicked()
 {
     QMessageBox::information(this, "提示", "PDF导出功能待实现");
 }
 
+// 导出CSV按钮点击事件
 void MainWindow::onBtnExportCsvClicked()
 {
     QMessageBox::information(this, "提示", "CSV导出功能待实现");
 }
 
-// ========== 修复1：标签筛选失效问题（重构筛选逻辑，确保标签筛选生效） ==========
+// 筛选条件变更事件
 void MainWindow::onFilterChanged()
 {
     QString category = ui->comboCategoryFilter->currentText();
@@ -198,16 +323,13 @@ void MainWindow::onFilterChanged()
     QString status = ui->comboStatusFilter->currentText();
     QString tag = ui->comboTagFilter->currentText();
 
-    // 直接传递筛选条件给模型，确保标签筛选逻辑被正确执行
     m_taskModel->setFilterConditions(category, priority, status, tag);
-    // 刷新统计面板
     updateStatisticPanel();
 }
 
-// ========== 修复2：归档弹窗重复弹出问题（避免信号重复绑定/重复执行） ==========
+// 归档已完成任务按钮点击事件
 void MainWindow::on_btnArchiveCompleted_clicked()
 {
-    // 1. 先判断是否有已完成任务，无任务则直接提示，避免无效操作
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
     int completedCount = 0;
     for (const Task& task : allTasks) {
@@ -220,39 +342,37 @@ void MainWindow::on_btnArchiveCompleted_clicked()
         return;
     }
 
-    // 2. 仅弹出一次确认弹窗，通过返回值直接判断，避免重复执行
     int ret = QMessageBox::question(this, "确认归档", "是否确定归档所有已完成任务？",
                                     QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (ret != QMessageBox::Yes) {
-        return; // 取消则直接返回，不执行后续逻辑
+        return;
     }
 
-    // 3. 执行归档操作，仅弹出一次结果弹窗
     if (DatabaseManager::instance().archiveCompletedTasks()) {
         QMessageBox::information(this, "成功", QString("已成功归档%1个已完成任务！").arg(completedCount));
         m_taskModel->refreshTasks();
         updateStatisticPanel();
         initTagFilter();
+        emit taskUpdated(); // 触发任务更新，重置提醒记录
     } else {
         QMessageBox::critical(this, "失败", "任务归档失败！");
     }
 }
 
-// ========== 修复3：查看归档无数据问题（确保归档对话框正确加载归档任务） ==========
+// 查看归档任务按钮点击事件
 void MainWindow::on_btnViewArchive_clicked()
 {
-    // 每次创建新的归档对话框，确保数据重新加载
     ArchiveDialog* dialog = new ArchiveDialog(this);
-    // 仅绑定一次accepted信号，避免重复刷新
     connect(dialog, &ArchiveDialog::accepted, this, [=]() {
         m_taskModel->refreshTasks();
         updateStatisticPanel();
         initTagFilter();
+        emit taskUpdated(); // 触发任务更新，重置提醒记录
     });
-    // 显示对话框（非模态改为模态，避免多次打开）
-    dialog->exec(); // 使用exec()替代show()，确保对话框独占焦点，避免重复点击
+    dialog->exec();
 }
 
+// 搜索按钮点击事件
 void MainWindow::on_btnSearch_clicked()
 {
     QString searchText = ui->lineEditSearch->text().trimmed();
@@ -286,12 +406,14 @@ void MainWindow::on_btnSearch_clicked()
     ui->labelOverdue->setText(QString("逾期：%1").arg(overdue));
 }
 
+// 生成统计报表按钮点击事件
 void MainWindow::on_btnGenerateReport_clicked()
 {
     StatisticDialog* dialog = new StatisticDialog(this);
     dialog->show();
 }
 
+// 任务添加/编辑对话框
 bool MainWindow::showTaskDialog(Task &task, bool isEdit)
 {
     QDialog dialog(this);
