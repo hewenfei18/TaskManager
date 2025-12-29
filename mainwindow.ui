@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>800</width>
+    <width>900</width>
     <height>600</height>
    </rect>
   </property>
@@ -16,42 +16,201 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <!-- 筛选+定时提醒（修复宽度不足，显示完整数字） -->
+     <!-- 筛选+搜索+定时提醒（新增标签筛选+搜索框） -->
      <widget class="QGroupBox" name="groupBoxFilter">
       <property name="title">
-       <string>任务筛选/定时提醒</string>
+       <string>任务筛选/搜索/定时提醒</string>
       </property>
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>60</height>
+        <height>80</height>
        </size>
       </property>
-      <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="0,0,0,0,1,0,0,0">
-       <property name="spacing">
-        <number>2</number>
-       </property>
-       <!-- 分类筛选 -->
+      <layout class="QVBoxLayout" name="verticalLayout_7">
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_3">
+        <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,0,0,0,0,1,0,0">
          <property name="spacing">
-          <number>1</number>
+          <number>2</number>
          </property>
+         <!-- 分类筛选 -->
          <item>
-          <widget class="QLabel" name="labelCategory">
-           <property name="text">
-            <string>分类：</string>
+          <layout class="QVBoxLayout" name="verticalLayout_3">
+           <property name="spacing">
+            <number>1</number>
            </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>15</height>
-            </size>
-           </property>
-          </widget>
+           <item>
+            <widget class="QLabel" name="labelCategory">
+             <property name="text">
+              <string>分类：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>15</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboCategoryFilter">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
+         <!-- 优先级筛选 -->
          <item>
-          <widget class="QComboBox" name="comboCategoryFilter">
+          <layout class="QVBoxLayout" name="verticalLayout_4">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelPriority">
+             <property name="text">
+              <string>优先级：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>15</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboPriorityFilter">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <!-- 状态筛选 -->
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_5">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelStatus">
+             <property name="text">
+              <string>状态：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>15</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboStatusFilter">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>70</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <!-- 新增：标签筛选 -->
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_8">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelTag">
+             <property name="text">
+              <string>标签：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>15</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboTagFilter">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>80</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>80</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <!-- 刷新筛选按钮 -->
+         <item>
+          <widget class="QPushButton" name="btnRefreshFilter">
+           <property name="text">
+            <string>刷新筛选</string>
+           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -71,162 +230,48 @@
             </size>
            </property>
           </widget>
+         </item>
+         <!-- 新增：全局搜索框 -->
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_7">
+           <property name="spacing">
+            <number>2</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelSearch">
+             <property name="text">
+              <string>搜索：</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEditSearch">
+             <property name="placeholderText">
+              <string>输入任务标题/备注搜索...</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnSearch">
+             <property name="text">
+              <string>搜索</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
         </layout>
        </item>
-       <!-- 优先级筛选 -->
        <item>
-        <layout class="QVBoxLayout" name="verticalLayout_4">
+        <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,0,1,0,0,0">
          <property name="spacing">
-          <number>1</number>
+          <number>2</number>
          </property>
+         <!-- 提醒开关 -->
          <item>
-          <widget class="QLabel" name="labelPriority">
+          <widget class="QCheckBox" name="checkBoxRemindEnable">
            <property name="text">
-            <string>优先级：</string>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>15</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="comboPriorityFilter">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>70</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>70</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <!-- 状态筛选 -->
-       <item>
-        <layout class="QVBoxLayout" name="verticalLayout_5">
-         <property name="spacing">
-          <number>1</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="labelStatus">
-           <property name="text">
-            <string>状态：</string>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>15</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="comboStatusFilter">
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>70</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>70</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-        </layout>
-       </item>
-       <!-- 刷新筛选按钮 -->
-       <item>
-        <widget class="QPushButton" name="btnRefreshFilter">
-         <property name="text">
-          <string>刷新筛选</string>
-         </property>
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>70</width>
-           <height>20</height>
-          </size>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>70</width>
-           <height>20</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <!-- 占位符 -->
-       <item>
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Horizontal</enum>
-         </property>
-         <property name="sizeType">
-          <enum>QSizePolicy::Expanding</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>10</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
-       <!-- 提醒开关 -->
-       <item>
-        <widget class="QCheckBox" name="checkBoxRemindEnable">
-         <property name="text">
-          <string>启用提醒</string>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>20</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <!-- 提前提醒时长（加宽输入框，显示完整数字） -->
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <property name="spacing">
-          <number>1</number>
-         </property>
-         <item>
-          <widget class="QLabel" name="labelRemind">
-           <property name="text">
-            <string>提前：</string>
+            <string>启用提醒</string>
            </property>
            <property name="minimumSize">
             <size>
@@ -236,112 +281,176 @@
            </property>
           </widget>
          </item>
+         <!-- 提前提醒 -->
          <item>
-          <widget class="QSpinBox" name="spinBoxRemindMinutes">
-           <property name="minimum">
-            <number>0</number>
+          <layout class="QHBoxLayout" name="horizontalLayout">
+           <property name="spacing">
+            <number>1</number>
            </property>
-           <property name="maximum">
-            <number>1440</number>
-           </property>
-           <property name="value">
-            <number>30</number>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <!-- 加宽输入框：从40改为60，确保3位数字完整显示 -->
-           <property name="minimumSize">
-            <size>
-             <width>60</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>60</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
+           <item>
+            <widget class="QLabel" name="labelRemind">
+             <property name="text">
+              <string>提前：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinBoxRemindMinutes">
+             <property name="minimum">
+              <number>0</number>
+             </property>
+             <property name="maximum">
+              <number>1440</number>
+             </property>
+             <property name="value">
+              <number>30</number>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="labelMinute">
+             <property name="text">
+              <string>分</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
          </item>
+         <!-- 占位符 -->
          <item>
-          <widget class="QLabel" name="labelMinute">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeType">
+            <enum>QSizePolicy::Expanding</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>10</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <!-- 检查频率 -->
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
+           <property name="spacing">
+            <number>1</number>
+           </property>
+           <item>
+            <widget class="QLabel" name="labelCheckInterval">
+             <property name="text">
+              <string>频率：</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QSpinBox" name="spinBoxCheckInterval">
+             <property name="minimum">
+              <number>10</number>
+             </property>
+             <property name="maximum">
+              <number>300</number>
+             </property>
+             <property name="value">
+              <number>30</number>
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>60</width>
+               <height>20</height>
+              </size>
+             </property>
+             <property name="maximumSize">
+              <size>
+               <width>60</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="labelSecond">
+             <property name="text">
+              <string>秒</string>
+             </property>
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>20</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <!-- 新增：归档已完成按钮 -->
+         <item>
+          <widget class="QPushButton" name="btnArchiveCompleted">
            <property name="text">
-            <string>分</string>
+            <string>归档已完成</string>
            </property>
            <property name="minimumSize">
             <size>
-             <width>0</width>
+             <width>80</width>
              <height>20</height>
             </size>
            </property>
           </widget>
          </item>
-        </layout>
-       </item>
-       <!-- 检查频率（加宽输入框，显示完整数字） -->
-       <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_2">
-         <property name="spacing">
-          <number>1</number>
-         </property>
+         <!-- 新增：查看归档按钮 -->
          <item>
-          <widget class="QLabel" name="labelCheckInterval">
+          <widget class="QPushButton" name="btnViewArchive">
            <property name="text">
-            <string>频率：</string>
+            <string>查看归档</string>
            </property>
            <property name="minimumSize">
             <size>
-             <width>0</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QSpinBox" name="spinBoxCheckInterval">
-           <property name="minimum">
-            <number>10</number>
-           </property>
-           <property name="maximum">
-            <number>300</number>
-           </property>
-           <property name="value">
-            <number>30</number>
-           </property>
-           <property name="sizePolicy">
-            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-             <horstretch>0</horstretch>
-             <verstretch>0</verstretch>
-            </sizepolicy>
-           </property>
-           <!-- 加宽输入框：从40改为60，确保3位数字完整显示 -->
-           <property name="minimumSize">
-            <size>
-             <width>60</width>
-             <height>20</height>
-            </size>
-           </property>
-           <property name="maximumSize">
-            <size>
-             <width>60</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QLabel" name="labelSecond">
-           <property name="text">
-            <string>秒</string>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
+             <width>80</width>
              <height>20</height>
             </size>
            </property>
@@ -352,7 +461,7 @@
       </layout>
      </widget>
     </item>
-    <!-- 统计面板 -->
+    <!-- 统计面板（新增生成报表按钮） -->
     <item>
      <widget class="QGroupBox" name="groupBoxStat">
       <property name="title">
@@ -404,6 +513,14 @@
           </size>
          </property>
         </spacer>
+       </item>
+       <!-- 新增：生成统计报表按钮 -->
+       <item>
+        <widget class="QPushButton" name="btnGenerateReport">
+         <property name="text">
+          <string>生成统计报表</string>
+         </property>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -518,7 +635,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>800</width>
+     <width>900</width>
      <height>22</height>
     </rect>
    </property>

@@ -1,49 +1,96 @@
 #include "databasemanager.h"
+#include <QCoreApplication>
 #include <QDebug>
 #include <QSqlError>
-#include <QDateTime>
 #include <QThread>
+#include <QDir>
 
-const QString DB_PATH = "./task_database.db";
-
-DatabaseManager& DatabaseManager::instance()
+DatabaseManager::DatabaseManager()
+    : m_connectionName("TaskManagerConnection")
 {
-    static DatabaseManager instance;
-    return instance;
-}
+    // ========== 强制绑定项目根目录下的 task_database.db ==========
+    // 项目根目录路径：D:\Qt\Qt project\TaskManager
+    QString projectRootPath = "D:/Qt/Qt project/TaskManager";
+    QDir projectDir(projectRootPath);
 
-DatabaseManager::DatabaseManager(QObject *parent)
-    : QObject(parent)
-{
-    // 初始化m_db
-    m_db = QSqlDatabase::addDatabase("QSQLITE", "MainConnection");
-    m_db.setDatabaseName(DB_PATH);
-}
-
-// 修正：每个线程独立的数据库连接
-QSqlDatabase DatabaseManager::getThreadSafeDatabase()
-{
-    QString connectionName = QString("TaskDB_%1").arg((quintptr)QThread::currentThreadId());
-    if (QSqlDatabase::contains(connectionName)) {
-        return QSqlDatabase::database(connectionName);
+    // 确保项目根目录存在（防止路径不存在导致创建数据库失败）
+    if (!projectDir.exists()) {
+        projectDir.mkpath(projectRootPath);
+        qDebug() << "项目根目录不存在，已自动创建：" << projectRootPath;
     }
 
-    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", connectionName);
-    db.setDatabaseName(DB_PATH);
-    if (!db.open()) {
-        qCritical() << "线程" << QThread::currentThreadId() << "数据库打开失败：" << db.lastError().text();
-    }
-    return db;
+    // 绑定项目根目录下的 task_database.db
+    m_dbPath = projectDir.filePath("task_database.db");
+
+    // 初始化数据库连接
+    m_db = QSqlDatabase::addDatabase("QSQLITE", m_connectionName);
+    m_db.setDatabaseName(m_dbPath);
+    qDebug() << "已绑定数据库路径（项目根目录）：" << m_dbPath;
+}
+
+DatabaseManager::~DatabaseManager()
+{
+    close();
 }
 
 bool DatabaseManager::init()
 {
     if (!m_db.open()) {
         qDebug() << "数据库打开失败：" << m_db.lastError().text();
+        qDebug() << "当前数据库路径：" << m_dbPath;
         return false;
     }
 
     QSqlQuery query(m_db);
+
+    // 检查并新增is_archived字段（兼容旧表，避免语法错误）
+    query.exec("PRAGMA table_info(tasks)");
+    bool hasArchivedField = false;
+    while (query.next()) {
+        if (query.value(1).toString() == "is_archived") {
+            hasArchivedField = true;
+            break;
+        }
+    }
+    if (!hasArchivedField) {
+        QString addArchivedFieldSql = "ALTER TABLE tasks ADD COLUMN is_archived INTEGER DEFAULT 0";
+        if (!query.exec(addArchivedFieldSql)) {
+            qDebug() << "新增is_archived字段失败：" << query.lastError().text();
+        }
+    }
+
+    // 检查并新增progress字段（兼容旧表，避免语法错误）
+    query.exec("PRAGMA table_info(tasks)");
+    bool hasProgressField = false;
+    while (query.next()) {
+        if (query.value(1).toString() == "progress") {
+            hasProgressField = true;
+            break;
+        }
+    }
+    if (!hasProgressField) {
+        QString addProgressFieldSql = "ALTER TABLE tasks ADD COLUMN progress INTEGER DEFAULT 0";
+        if (!query.exec(addProgressFieldSql)) {
+            qDebug() << "新增progress字段失败：" << query.lastError().text();
+        }
+    }
+
+    // 创建tags表（任务标签表，关联tasks表，不存在则创建）
+    QString createTagsTableSql = R"(
+        CREATE TABLE IF NOT EXISTS tags (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            tag_name TEXT NOT NULL,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
+        )
+    )";
+    if (!query.exec(createTagsTableSql)) {
+        qDebug() << "创建tags表失败：" << query.lastError().text();
+        m_db.close();
+        return false;
+    }
+
+    // 创建tasks表（项目根目录下的核心表，不存在则创建）
     QString createTableSql = R"(
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,113 +99,41 @@ bool DatabaseManager::init()
             priority TEXT NOT NULL CHECK(priority IN ('高', '中', '低')),
             due_time DATETIME NOT NULL,
             status INTEGER NOT NULL DEFAULT 0 CHECK(status IN (0, 1)),
-            description TEXT
+            description TEXT,
+            progress INTEGER DEFAULT 0,
+            is_archived INTEGER DEFAULT 0
         )
     )";
-
     if (!query.exec(createTableSql)) {
-        qDebug() << "创建表失败：" << query.lastError().text();
+        qDebug() << "创建tasks表失败：" << query.lastError().text();
         m_db.close();
         return false;
     }
+
     return true;
 }
 
-QList<Task> DatabaseManager::getAllTasks()
+void DatabaseManager::close()
 {
-    QList<Task> taskList;
-    QSqlDatabase db = getThreadSafeDatabase();
-    if (!db.isOpen()) return taskList;
-
-    QSqlQuery query("SELECT id, title, category, priority, due_time, status, description FROM tasks ORDER BY id DESC", db);
-    while (query.next()) {
-        Task task;
-        task.id = query.value(0).toInt();
-        task.title = query.value(1).toString();
-        task.category = query.value(2).toString();
-        task.priority = query.value(3).toString();
-        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        taskList.append(task);
+    if (m_db.isOpen()) {
+        m_db.commit(); // 强制提交所有事务，确保数据写入磁盘
+        m_db.close();
+        qDebug() << "数据库已关闭，数据已持久化到：" << m_dbPath;
     }
-    return taskList;
 }
 
-QList<Task> DatabaseManager::getOverdueUncompletedTasks()
+QSqlDatabase DatabaseManager::getThreadSafeDatabase()
 {
-    QList<Task> taskList;
-    QSqlDatabase db = getThreadSafeDatabase();
-    if (!db.isOpen()) return taskList;
-
-    QSqlQuery query(db);
-    query.prepare(R"(
-        SELECT id, title, category, priority, due_time, status, description
-        FROM tasks
-        WHERE due_time <= :now AND status = 0
-        ORDER BY due_time ASC
-    )");
-    query.bindValue(":now", QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss"));
-
-    if (!query.exec()) {
-        qDebug() << "获取逾期任务失败：" << query.lastError().text();
-        return taskList;
+    QMutexLocker locker(&m_mutex);
+    QString threadConnectionName = m_connectionName + "_" + QString::number((qlonglong)QThread::currentThreadId());
+    if (!QSqlDatabase::contains(threadConnectionName)) {
+        QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE", threadConnectionName);
+        db.setDatabaseName(m_dbPath); // 线程连接也绑定项目根目录的数据库
+        if (!db.open()) {
+            qDebug() << "线程安全数据库连接失败：" << db.lastError().text();
+        }
     }
-
-    while (query.next()) {
-        Task task;
-        task.id = query.value(0).toInt();
-        task.title = query.value(1).toString();
-        task.category = query.value(2).toString();
-        task.priority = query.value(3).toString();
-        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        taskList.append(task);
-    }
-    return taskList;
-}
-
-int DatabaseManager::getTotalTaskCount()
-{
-    QSqlDatabase db = getThreadSafeDatabase();
-    if (!db.isOpen()) return 0;
-
-    QSqlQuery query("SELECT COUNT(*) FROM tasks", db);
-    if (query.next()) {
-        return query.value(0).toInt();
-    }
-    return 0;
-}
-
-int DatabaseManager::getCompletedTaskCount()
-{
-    QSqlDatabase db = getThreadSafeDatabase();
-    if (!db.isOpen()) return 0;
-
-    QSqlQuery query("SELECT COUNT(*) FROM tasks WHERE status = 1", db);
-    if (query.next()) {
-        return query.value(0).toInt();
-    }
-    return 0;
-}
-
-int DatabaseManager::getOverdueUncompletedCount()
-{
-    return getOverdueUncompletedTasks().count();
-}
-
-// 补充getCompletionRate方法实现
-QString DatabaseManager::getCompletionRate()
-{
-    int total = getTotalTaskCount();
-    if (total == 0) {
-        return "0.0%";
-    }
-
-    int completed = getCompletedTaskCount();
-    double rate = (static_cast<double>(completed) / total) * 100.0;
-    return QString("%1%").arg(rate, 0, 'f', 1);
+    return QSqlDatabase::database(threadConnectionName);
 }
 
 bool DatabaseManager::addTask(const Task& task)
@@ -168,8 +143,8 @@ bool DatabaseManager::addTask(const Task& task)
 
     QSqlQuery query(db);
     query.prepare(R"(
-        INSERT INTO tasks (title, category, priority, due_time, status, description)
-        VALUES (:title, :category, :priority, :due_time, :status, :description)
+        INSERT INTO tasks (title, category, priority, due_time, status, description, progress, is_archived)
+        VALUES (:title, :category, :priority, :due_time, :status, :description, :progress, :is_archived)
     )");
     query.bindValue(":title", task.title);
     query.bindValue(":category", task.category);
@@ -177,42 +152,46 @@ bool DatabaseManager::addTask(const Task& task)
     query.bindValue(":due_time", task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
     query.bindValue(":status", task.status);
     query.bindValue(":description", task.description);
+    query.bindValue(":progress", task.progress);
+    query.bindValue(":is_archived", task.is_archived);
 
     if (!query.exec()) {
         qDebug() << "添加任务失败：" << query.lastError().text();
         return false;
     }
+
+    db.commit(); // 立即写入磁盘，确保数据不丢失
     return true;
 }
 
 bool DatabaseManager::updateTask(const Task& task)
 {
     QSqlDatabase db = getThreadSafeDatabase();
-    if (!db.isOpen() || task.id == -1) return false;
+    if (!db.isOpen() || task.id <= 0) return false;
 
     QSqlQuery query(db);
     query.prepare(R"(
         UPDATE tasks
-        SET title = :title,
-            category = :category,
-            priority = :priority,
-            due_time = :due_time,
-            status = :status,
-            description = :description
+        SET title = :title, category = :category, priority = :priority, due_time = :due_time,
+            status = :status, description = :description, progress = :progress, is_archived = :is_archived
         WHERE id = :id
     )");
+    query.bindValue(":id", task.id);
     query.bindValue(":title", task.title);
     query.bindValue(":category", task.category);
     query.bindValue(":priority", task.priority);
     query.bindValue(":due_time", task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
     query.bindValue(":status", task.status);
     query.bindValue(":description", task.description);
-    query.bindValue(":id", task.id);
+    query.bindValue(":progress", task.progress);
+    query.bindValue(":is_archived", task.is_archived);
 
     if (!query.exec()) {
         qDebug() << "更新任务失败：" << query.lastError().text();
         return false;
     }
+
+    db.commit(); // 立即写入磁盘，确保数据同步
     return true;
 }
 
@@ -229,5 +208,283 @@ bool DatabaseManager::deleteTask(int taskId)
         qDebug() << "删除任务失败：" << query.lastError().text();
         return false;
     }
+
+    db.commit(); // 立即写入磁盘，确保数据同步
     return true;
+}
+
+QList<Task> DatabaseManager::getAllTasks()
+{
+    QList<Task> taskList;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return taskList;
+
+    // 仅查询未归档任务，按ID倒序排列
+    QSqlQuery query("SELECT id, title, category, priority, due_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 0 ORDER BY id DESC", db);
+    while (query.next()) {
+        Task task;
+        task.id = query.value(0).toInt();
+        task.title = query.value(1).toString();
+        task.category = query.value(2).toString();
+        task.priority = query.value(3).toString();
+        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(5).toInt();
+        task.description = query.value(6).toString();
+        task.progress = query.value(7).toInt();
+        task.is_archived = query.value(8).toInt();
+        taskList.append(task);
+    }
+
+    return taskList;
+}
+
+bool DatabaseManager::archiveCompletedTasks()
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return false;
+
+    QSqlQuery query(db);
+    query.prepare("UPDATE tasks SET is_archived = 1 WHERE status = 1 AND is_archived = 0");
+    if (!query.exec()) {
+        qDebug() << "归档已完成任务失败：" << query.lastError().text();
+        return false;
+    }
+
+    db.commit();
+    return true;
+}
+
+QList<Task> DatabaseManager::getAllArchivedTasks()
+{
+    QList<Task> taskList;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return taskList;
+
+    // 仅查询归档任务，按ID倒序排列
+    QSqlQuery query("SELECT id, title, category, priority, due_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 1 ORDER BY id DESC", db);
+    while (query.next()) {
+        Task task;
+        task.id = query.value(0).toInt();
+        task.title = query.value(1).toString();
+        task.category = query.value(2).toString();
+        task.priority = query.value(3).toString();
+        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(5).toInt();
+        task.description = query.value(6).toString();
+        task.progress = query.value(7).toInt();
+        task.is_archived = query.value(8).toInt();
+        taskList.append(task);
+    }
+
+    return taskList;
+}
+
+bool DatabaseManager::restoreTaskFromArchive(int taskId)
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || taskId <= 0) return false;
+
+    QSqlQuery query(db);
+    query.prepare("UPDATE tasks SET is_archived = 0 WHERE id = :id");
+    query.bindValue(":id", taskId);
+    if (!query.exec()) {
+        qDebug() << "恢复归档任务失败：" << query.lastError().text();
+        return false;
+    }
+
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::deleteTaskPermanently(int taskId)
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || taskId <= 0) return false;
+
+    QSqlQuery query(db);
+    query.prepare("DELETE FROM tasks WHERE id = :id");
+    query.bindValue(":id", taskId);
+    if (!query.exec()) {
+        qDebug() << "永久删除任务失败：" << query.lastError().text();
+        return false;
+    }
+
+    db.commit();
+    return true;
+}
+
+bool DatabaseManager::addTagsForTask(int taskId, const QStringList& tagNames)
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || taskId <= 0 || tagNames.isEmpty()) return false;
+
+    // 先删除该任务原有标签，避免重复
+    QSqlQuery delQuery(db);
+    delQuery.prepare("DELETE FROM tags WHERE task_id = :task_id");
+    delQuery.bindValue(":task_id", taskId);
+    if (!delQuery.exec()) {
+        qDebug() << "删除任务原有标签失败：" << delQuery.lastError().text();
+        return false;
+    }
+
+    // 批量添加新标签
+    QSqlQuery addQuery(db);
+    addQuery.prepare("INSERT INTO tags (task_id, tag_name) VALUES (:task_id, :tag_name)");
+    for (const QString& tag : tagNames) {
+        QString tagTrimmed = tag.trimmed();
+        if (tagTrimmed.isEmpty()) continue; // 跳过空标签
+        addQuery.bindValue(":task_id", taskId);
+        addQuery.bindValue(":tag_name", tagTrimmed);
+        if (!addQuery.exec()) {
+            qDebug() << "添加标签失败：" << addQuery.lastError().text();
+            return false;
+        }
+    }
+
+    db.commit();
+    return true;
+}
+
+QStringList DatabaseManager::getTagsForTask(int taskId)
+{
+    QStringList tagList;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || taskId <= 0) return tagList;
+
+    QSqlQuery query(db);
+    query.prepare("SELECT tag_name FROM tags WHERE task_id = :task_id");
+    query.bindValue(":task_id", taskId);
+    if (!query.exec()) {
+        qDebug() << "获取任务标签失败：" << query.lastError().text();
+        return tagList;
+    }
+
+    while (query.next()) {
+        tagList.append(query.value(0).toString());
+    }
+
+    return tagList;
+}
+
+QStringList DatabaseManager::getAllDistinctTags()
+{
+    QStringList tagList;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return tagList;
+
+    // 获取所有不重复的标签，按名称排序
+    QSqlQuery query("SELECT DISTINCT tag_name FROM tags ORDER BY tag_name", db);
+    while (query.next()) {
+        tagList.append(query.value(0).toString());
+    }
+
+    return tagList;
+}
+
+QList<Task> DatabaseManager::getTasksByTag(const QString& tagName)
+{
+    QList<Task> taskList;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || tagName.trimmed().isEmpty()) return taskList;
+
+    // 关联查询标签对应的未归档任务
+    QSqlQuery query(db);
+    query.prepare(R"(
+        SELECT t.id, t.title, t.category, t.priority, t.due_time, t.status, t.description, t.progress, t.is_archived
+        FROM tasks t
+        JOIN tags g ON t.id = g.task_id
+        WHERE g.tag_name = :tag_name AND t.is_archived = 0
+        ORDER BY t.id DESC
+    )");
+    query.bindValue(":tag_name", tagName.trimmed());
+    if (!query.exec()) {
+        qDebug() << "根据标签筛选任务失败：" << query.lastError().text();
+        return taskList;
+    }
+
+    while (query.next()) {
+        Task task;
+        task.id = query.value(0).toInt();
+        task.title = query.value(1).toString();
+        task.category = query.value(2).toString();
+        task.priority = query.value(3).toString();
+        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(5).toInt();
+        task.description = query.value(6).toString();
+        task.progress = query.value(7).toInt();
+        task.is_archived = query.value(8).toInt();
+        taskList.append(task);
+    }
+
+    return taskList;
+}
+
+QList<Task> DatabaseManager::getOverdueUncompletedTasks()
+{
+    QList<Task> tasks;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return tasks;
+
+    // 查询逾期未完成的未归档任务
+    QSqlQuery query(db);
+    query.prepare("SELECT id, title, category, priority, due_time, status, description, progress, is_archived "
+                  "FROM tasks WHERE status=0 AND due_time < datetime('now') AND is_archived=0 ORDER BY id DESC");
+    if (!query.exec()) {
+        qDebug() << "获取逾期未完成任务失败：" << query.lastError().text();
+        return tasks;
+    }
+
+    while (query.next()) {
+        Task task;
+        task.id = query.value(0).toInt();
+        task.title = query.value(1).toString();
+        task.category = query.value(2).toString();
+        task.priority = query.value(3).toString();
+        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(5).toInt();
+        task.description = query.value(6).toString();
+        task.progress = query.value(7).toInt();
+        task.is_archived = query.value(8).toInt();
+        tasks.append(task);
+    }
+    return tasks;
+}
+
+int DatabaseManager::getTotalTaskCount()
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return 0;
+
+    QSqlQuery query(db);
+    query.exec("SELECT COUNT(*) FROM tasks WHERE is_archived=0");
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}
+
+int DatabaseManager::getCompletedTaskCount()
+{
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen()) return 0;
+
+    QSqlQuery query(db);
+    query.exec("SELECT COUNT(*) FROM tasks WHERE status=1 AND is_archived=0");
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
+}
+
+int DatabaseManager::getOverdueUncompletedCount()
+{
+    return getOverdueUncompletedTasks().count();
+}
+
+double DatabaseManager::getCompletionRate()
+{
+    int total = getTotalTaskCount();
+    if (total == 0) return 0.0;
+    // 计算完成率（百分比）
+    return (static_cast<double>(getCompletedTaskCount()) / total) * 100;
 }
