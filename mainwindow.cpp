@@ -3,7 +3,7 @@
 #include "databasemanager.h"
 #include "tasktablemodel.h"
 #include "archivedialog.h"
-#include "statisticdialog.h" // 新增：包含统计报表对话框头文件
+#include "statisticdialog.h"
 #include "pdfexporter.h"
 #include "csvexporter.h"
 #include <QMessageBox>
@@ -22,21 +22,17 @@
 #include <QTimer>
 #include <QMap>
 #include <QDebug>
-
-// 定义内部结构体
-struct MainWindow::TaskReminder {
-    int taskId;
-    QTimer* reminderTimer;
-    QString taskTitle;
-};
+#include <QSet>
 
 // ------------------------------
-// 1. 构造函数（必须实现）
+// 1. 构造函数
 // ------------------------------
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
     , m_taskModel(new TaskTableModel(this))
+    , m_reportDialog(nullptr)
+    , m_globalTaskMonitorTimer(new QTimer(this))
 {
     ui->setupUi(this);
 
@@ -56,20 +52,19 @@ MainWindow::MainWindow(QWidget *parent)
     header->resizeSection(4, 80);  // 状态列
     header->setSectionResizeMode(header->count() - 1, QHeaderView::Stretch);
 
-    // 调用私有函数（必须实现这些函数）
+    // 调用私有函数
     initFilterComboBoxes();
     initTagFilter();
     m_taskModel->refreshTasks();
     updateStatisticPanel();
     initTaskReminders();
 
-    // 绑定信号槽（函数名要和头文件一致）
+    // 绑定信号槽
     connect(ui->btnAdd, &QPushButton::clicked, this, &MainWindow::onBtnAddClicked);
     connect(ui->btnEdit, &QPushButton::clicked, this, &MainWindow::onBtnEditClicked);
     connect(ui->btnDelete, &QPushButton::clicked, this, &MainWindow::onBtnDeleteClicked);
     connect(ui->btnExportPdf, &QPushButton::clicked, this, &MainWindow::onBtnExportPdfClicked);
     connect(ui->btnExportCsv, &QPushButton::clicked, this, &MainWindow::onBtnExportCsvClicked);
-    // 关键：绑定“生成统计报表”按钮到StatisticDialog
     connect(ui->btnGenerateReport, &QPushButton::clicked, this, &MainWindow::on_btnGenerateReport_clicked);
 
     connect(ui->comboCategoryFilter, &QComboBox::currentTextChanged, this, &MainWindow::onFilterChanged);
@@ -81,14 +76,20 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->btnArchiveCompleted, &QPushButton::clicked, this, &MainWindow::on_btnArchiveCompleted_clicked);
     connect(ui->btnViewArchive, &QPushButton::clicked, this, &MainWindow::on_btnViewArchive_clicked);
     connect(ui->btnSearch, &QPushButton::clicked, this, &MainWindow::on_btnSearch_clicked);
+
+    // 全局后台实时监测配置
+    connect(m_globalTaskMonitorTimer, &QTimer::timeout, this, &MainWindow::onGlobalTaskMonitorTriggered);
+    m_globalTaskMonitorTimer->start(30000); // 30秒监测一次
+    onGlobalTaskMonitorTriggered(); // 初始化时立即监测
+    qDebug() << "全局任务后台监测已启动，监测间隔：30秒";
 }
 
 // ------------------------------
-// 2. 析构函数（必须实现）
+// 2. 析构函数
 // ------------------------------
 MainWindow::~MainWindow()
 {
-    // 销毁定时器
+    // 销毁单个任务提醒定时器
     QMap<int, TaskReminder>::iterator it = m_taskReminders.begin();
     while (it != m_taskReminders.end()) {
         if (it.value().reminderTimer) {
@@ -99,12 +100,25 @@ MainWindow::~MainWindow()
     }
     m_taskReminders.clear();
 
+    // 销毁全局监测定时器
+    if (m_globalTaskMonitorTimer) {
+        m_globalTaskMonitorTimer->stop();
+        delete m_globalTaskMonitorTimer;
+        m_globalTaskMonitorTimer = nullptr;
+    }
+
+    // 销毁报表对话框
+    if (m_reportDialog) {
+        delete m_reportDialog;
+        m_reportDialog = nullptr;
+    }
+
     DatabaseManager::instance().close();
     delete ui;
 }
 
 // ------------------------------
-// 3. 私有函数：initFilterComboBoxes（必须实现）
+// 3. 私有函数：initFilterComboBoxes
 // ------------------------------
 void MainWindow::initFilterComboBoxes()
 {
@@ -125,7 +139,7 @@ void MainWindow::initFilterComboBoxes()
 }
 
 // ------------------------------
-// 4. 私有函数：initTagFilter（必须实现）
+// 4. 私有函数：initTagFilter
 // ------------------------------
 void MainWindow::initTagFilter()
 {
@@ -135,7 +149,7 @@ void MainWindow::initTagFilter()
 }
 
 // ------------------------------
-// 5. 私有函数：updateStatisticPanel（必须实现）
+// 5. 私有函数：updateStatisticPanel
 // ------------------------------
 void MainWindow::updateStatisticPanel()
 {
@@ -155,7 +169,7 @@ void MainWindow::updateStatisticPanel()
 }
 
 // ------------------------------
-// 6. 私有函数：initTaskReminders（必须实现）
+// 6. 私有函数：initTaskReminders
 // ------------------------------
 void MainWindow::initTaskReminders()
 {
@@ -168,7 +182,7 @@ void MainWindow::initTaskReminders()
 }
 
 // ------------------------------
-// 7. 私有函数：setTaskReminder（必须实现）
+// 7. 私有函数：setTaskReminder
 // ------------------------------
 void MainWindow::setTaskReminder(const Task &task)
 {
@@ -198,7 +212,7 @@ void MainWindow::setTaskReminder(const Task &task)
 }
 
 // ------------------------------
-// 8. 私有函数：removeTaskReminder（必须实现）
+// 8. 私有函数：removeTaskReminder
 // ------------------------------
 void MainWindow::removeTaskReminder(int taskId)
 {
@@ -215,7 +229,7 @@ void MainWindow::removeTaskReminder(int taskId)
 }
 
 // ------------------------------
-// 9. 私有函数：onTaskReminderTriggered（必须实现）
+// 9. 私有函数：onTaskReminderTriggered
 // ------------------------------
 void MainWindow::onTaskReminderTriggered(int taskId)
 {
@@ -227,7 +241,7 @@ void MainWindow::onTaskReminderTriggered(int taskId)
         return;
     }
 
-    QString tipText = QString("【任务提醒】\n任务名称：%1\n分类：%2\n优先级：%3\n截止时间：%4")
+    QString tipText = QString("【任务自定义提醒】\n任务名称：%1\n分类：%2\n优先级：%3\n截止时间：%4")
                           .arg(task.title)
                           .arg(task.category)
                           .arg(task.priority)
@@ -238,7 +252,53 @@ void MainWindow::onTaskReminderTriggered(int taskId)
 }
 
 // ------------------------------
-// 10. 槽函数：onBtnAddClicked（必须实现）
+// 新增：全局后台任务监测槽函数
+// ------------------------------
+void MainWindow::onGlobalTaskMonitorTriggered()
+{
+    QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
+    QSet<int> notifiedOverdueTasks;
+    QSet<int> notifiedUpcomingTasks;
+
+    // 监测逾期任务
+    for (const Task& task : allTasks) {
+        if (task.status == 0 && task.dueTime < QDateTime::currentDateTime()) {
+            if (!notifiedOverdueTasks.contains(task.id)) {
+                QString overdueTip = QString("【任务逾期提醒】\n任务名称：%1\n分类：%2\n优先级：%3\n原定截止时间：%4\n当前状态：未完成（已逾期）")
+                                         .arg(task.title)
+                                         .arg(task.category)
+                                         .arg(task.priority)
+                                         .arg(task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
+                QMessageBox::warning(this, "任务逾期警告", overdueTip);
+                notifiedOverdueTasks.insert(task.id);
+                qDebug() << "监测到逾期任务：" << task.title;
+            }
+        }
+
+        // 监测即将到期任务（30分钟内）
+        qint64 secsToDue = QDateTime::currentDateTime().secsTo(task.dueTime);
+        if (task.status == 0 && task.dueTime > QDateTime::currentDateTime() && secsToDue > 0 && secsToDue <= 1800) {
+            if (!notifiedUpcomingTasks.contains(task.id)) {
+                QString upcomingTip = QString("【任务即将到期提醒】\n任务名称：%1\n分类：%2\n优先级：%3\n截止时间：%4\n剩余时间：约%5分钟")
+                                          .arg(task.title)
+                                          .arg(task.category)
+                                          .arg(task.priority)
+                                          .arg(task.dueTime.toString("yyyy-MM-dd HH:mm:ss"))
+                                          .arg(qRound(secsToDue / 60.0));
+                QMessageBox::information(this, "任务即将到期", upcomingTip);
+                notifiedUpcomingTasks.insert(task.id);
+                qDebug() << "监测到即将到期任务：" << task.title;
+            }
+        }
+    }
+
+    // 刷新UI
+    m_taskModel->refreshTasks();
+    updateStatisticPanel();
+}
+
+// ------------------------------
+// 10. 槽函数：onBtnAddClicked
 // ------------------------------
 void MainWindow::onBtnAddClicked()
 {
@@ -253,7 +313,7 @@ void MainWindow::onBtnAddClicked()
 }
 
 // ------------------------------
-// 11. 槽函数：onBtnEditClicked（必须实现）
+// 11. 槽函数：onBtnEditClicked
 // ------------------------------
 void MainWindow::onBtnEditClicked()
 {
@@ -274,7 +334,7 @@ void MainWindow::onBtnEditClicked()
 }
 
 // ------------------------------
-// 12. 槽函数：onBtnDeleteClicked（必须实现）
+// 12. 槽函数：onBtnDeleteClicked
 // ------------------------------
 void MainWindow::onBtnDeleteClicked()
 {
@@ -302,7 +362,7 @@ void MainWindow::onBtnDeleteClicked()
 }
 
 // ------------------------------
-// 13. 槽函数：onBtnExportPdfClicked（必须实现）
+// 13. 槽函数：onBtnExportPdfClicked
 // ------------------------------
 void MainWindow::onBtnExportPdfClicked()
 {
@@ -332,7 +392,7 @@ void MainWindow::onBtnExportPdfClicked()
 }
 
 // ------------------------------
-// 14. 槽函数：onBtnExportCsvClicked（必须实现）
+// 14. 槽函数：onBtnExportCsvClicked
 // ------------------------------
 void MainWindow::onBtnExportCsvClicked()
 {
@@ -362,24 +422,34 @@ void MainWindow::onBtnExportCsvClicked()
 }
 
 // ------------------------------
-// 15. 槽函数：on_btnGenerateReport_clicked（打开StatisticDialog图表报表）
+// 15. 槽函数：on_btnGenerateReport_clicked
 // ------------------------------
 void MainWindow::on_btnGenerateReport_clicked()
 {
-    // 打开统计报表对话框（带饼图+折线图）
-    StatisticDialog* reportDialog = new StatisticDialog(this);
-    reportDialog->setWindowTitle("任务统计报表");
-    // 对话框关闭后刷新主界面数据
-    connect(reportDialog, &StatisticDialog::accepted, this, [=]() {
-        m_taskModel->refreshTasks();
-        updateStatisticPanel();
-    });
-    reportDialog->exec();
-    delete reportDialog; // 对话框关闭后释放资源
+    if (!m_reportDialog) {
+        m_reportDialog = new StatisticDialog(this);
+        m_reportDialog->setWindowTitle("任务统计报表");
+        m_reportDialog->setAttribute(Qt::WA_DeleteOnClose);
+        connect(m_reportDialog, &QObject::destroyed, this, [=]() {
+            m_reportDialog = nullptr;
+        });
+
+        connect(m_reportDialog, &StatisticDialog::accepted, this, [=]() {
+            m_taskModel->refreshTasks();
+            updateStatisticPanel();
+        });
+        connect(m_reportDialog, &StatisticDialog::rejected, this, [=]() {
+            m_taskModel->refreshTasks();
+            updateStatisticPanel();
+        });
+    }
+    m_reportDialog->show();
+    m_reportDialog->raise();
+    m_reportDialog->activateWindow();
 }
 
 // ------------------------------
-// 16. 槽函数：onFilterChanged（必须实现）
+// 16. 槽函数：onFilterChanged
 // ------------------------------
 void MainWindow::onFilterChanged()
 {
@@ -393,7 +463,7 @@ void MainWindow::onFilterChanged()
 }
 
 // ------------------------------
-// 17. 槽函数：onBtnRefreshFilterClicked（必须实现）
+// 17. 槽函数：onBtnRefreshFilterClicked
 // ------------------------------
 void MainWindow::onBtnRefreshFilterClicked()
 {
@@ -403,7 +473,7 @@ void MainWindow::onBtnRefreshFilterClicked()
 }
 
 // ------------------------------
-// 18. 槽函数：on_btnArchiveCompleted_clicked（必须实现）
+// 18. 槽函数：on_btnArchiveCompleted_clicked
 // ------------------------------
 void MainWindow::on_btnArchiveCompleted_clicked()
 {
@@ -439,7 +509,7 @@ void MainWindow::on_btnArchiveCompleted_clicked()
 }
 
 // ------------------------------
-// 19. 槽函数：on_btnViewArchive_clicked（必须实现）
+// 19. 槽函数：on_btnViewArchive_clicked
 // ------------------------------
 void MainWindow::on_btnViewArchive_clicked()
 {
@@ -451,10 +521,11 @@ void MainWindow::on_btnViewArchive_clicked()
         emit taskUpdated();
     });
     dialog->exec();
+    delete dialog;
 }
 
 // ------------------------------
-// 20. 槽函数：on_btnSearch_clicked（必须实现）
+// 20. 槽函数：on_btnSearch_clicked
 // ------------------------------
 void MainWindow::on_btnSearch_clicked()
 {
@@ -489,7 +560,7 @@ void MainWindow::on_btnSearch_clicked()
 }
 
 // ------------------------------
-// 21. 私有函数：showTaskDialog（必须实现）
+// 21. 私有函数：showTaskDialog
 // ------------------------------
 bool MainWindow::showTaskDialog(Task &task, bool isEdit)
 {
