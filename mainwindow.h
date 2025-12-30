@@ -2,34 +2,26 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
-#include <QTimer>
 #include <QMap>
-#include "tasktablemodel.h"
+#include <QTimer>
 
-QT_BEGIN_NAMESPACE
+struct Task;
 namespace Ui { class MainWindow; }
-QT_END_NAMESPACE
-
-// 任务提醒结构体：存储任务ID、定时器、任务标题
-struct TaskReminder
-{
-    int taskId;
-    QTimer* reminderTimer;
-    QString taskTitle;
-};
+class TaskTableModel;
 
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
 signals:
-    void taskUpdated(); // 仅保留任务更新信号，移除全局提醒相关信号
+    void taskUpdated(); // 信号声明
 
 private slots:
+    // 所有按钮/筛选的槽函数声明
     void onBtnAddClicked();
     void onBtnEditClicked();
     void onBtnDeleteClicked();
@@ -40,21 +32,22 @@ private slots:
     void on_btnArchiveCompleted_clicked();
     void on_btnViewArchive_clicked();
     void on_btnSearch_clicked();
-    void on_btnGenerateReport_clicked();
-    void onTaskReminderTriggered(int taskId); // 任务提醒触发槽函数
-
+    void on_btnGenerateReport_clicked(); // 新增：生成统计报表的槽函数
 private:
+    struct TaskReminder; // 内部结构体声明
     Ui::MainWindow *ui;
     TaskTableModel *m_taskModel;
-    QMap<int, TaskReminder> m_taskReminders; // 存储所有任务的提醒定时器
+    QMap<int, TaskReminder> m_taskReminders;
 
+    // 私有成员函数声明
     void initFilterComboBoxes();
     void initTagFilter();
     void updateStatisticPanel();
+    void initTaskReminders();
+    void setTaskReminder(const Task &task);
+    void removeTaskReminder(int taskId);
+    void onTaskReminderTriggered(int taskId);
     bool showTaskDialog(Task &task, bool isEdit);
-    void initTaskReminders(); // 初始化已有任务的提醒
-    void removeTaskReminder(int taskId); // 移除指定任务的提醒
-    void setTaskReminder(const Task &task); // 为任务设置提醒
 };
 
 #endif // MAINWINDOW_H

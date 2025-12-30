@@ -19,12 +19,45 @@ void PdfExporter::exportToPdf(const QList<Task>& tasks, const QString& filePath)
         <head>
             <meta charset="UTF-8">
             <style>
-                body { font-family: SimHei; font-size: 10pt; }
-                .title { text-align: center; font-size: 14pt; font-weight: bold; margin-bottom: 10px; }
-                .info { margin-bottom: 15px; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #000; padding: 6px; text-align: left; }
-                th { background-color: #f0f0f0; font-weight: bold; }
+                /* 1. 全局统一边距，消除默认间隙 */
+                * { margin: 0; padding: 0; box-sizing: border-box; }
+                body {
+                    font-family: SimHei;
+                    font-size: 10pt;
+                    margin: 20mm; /* 页面整体边距 */
+                    line-height: 1.5; /* 行高更舒适 */
+                }
+                /* 2. 标题样式 */
+                .title {
+                    text-align: center;
+                    font-size: 14pt;
+                    font-weight: bold;
+                    margin-bottom: 15px; /* 与下方信息区拉开距离 */
+                }
+                /* 3. 信息区样式（统计信息） */
+                .info {
+                    margin-bottom: 15px;
+                    text-align: left; /* 左对齐，与表格对齐 */
+                }
+                /* 4. 表格样式（关键：宽度100%，消除溢出） */
+                table {
+                    width: 100%; /* 表格宽度占满容器 */
+                    border-collapse: collapse;
+                    margin: 0 auto; /* 自动居中（与上方内容对齐） */
+                }
+                th, td {
+                    border: 1px solid #000;
+                    padding: 6px 8px; /* 单元格内边距更均匀 */
+                    text-align: left;
+                    white-space: nowrap; /* 防止文字换行导致列宽混乱 */
+                    overflow: hidden;
+                    text-overflow: ellipsis; /* 超长文字省略号显示 */
+                }
+                th {
+                    background-color: #f0f0f0;
+                    font-weight: bold;
+                }
+                /* 优先级颜色 */
                 .high { color: red; }
                 .medium { color: orange; }
                 .low { color: green; }
@@ -46,7 +79,7 @@ void PdfExporter::exportToPdf(const QList<Task>& tasks, const QString& filePath)
                        .arg(dbMgr.getOverdueUncompletedCount())
                        .arg(dbMgr.getCompletionRate());
 
-    // 表格
+    // 表格（修复标签，确保与CSS对齐）
     htmlContent += R"(
         <table>
             <tr>
