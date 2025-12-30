@@ -8,17 +8,20 @@
 #include <QDateTime>
 #include <QMutex>
 
-// 任务结构体（包含进度、归档标记字段）
 struct Task {
     int id = -1;
     QString title;
     QString category;
     QString priority;
     QDateTime dueTime;
+    QDateTime remindTime; // 新增：任务提醒时间
     int status = 0; // 0:未完成 1:已完成
     QString description;
     int progress = 0; // 任务进度 0~100
     int is_archived = 0; // 0:未归档 1:已归档
+
+    // 新增：任务是否有效
+    bool isValid() const { return id != -1 && !title.isEmpty(); }
 };
 
 class DatabaseManager
@@ -61,6 +64,7 @@ public:
     int getCompletedTaskCount(); // 获取未归档的已完成任务数
     int getOverdueUncompletedCount(); // 获取逾期未完成的任务数（快捷方法）
     double getCompletionRate(); // 计算未归档任务的完成率（百分比，保留1位小数）
+    Task getTaskById(int taskId); // 新增：根据ID获取任务
 
 private:
     // 私有构造函数/析构函数（单例模式，禁止外部实例化）

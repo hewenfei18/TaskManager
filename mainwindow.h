@@ -2,11 +2,21 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QTimer>
+#include <QMap>
 #include "tasktablemodel.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 QT_END_NAMESPACE
+
+// 任务提醒结构体：存储任务ID、定时器、任务标题
+struct TaskReminder
+{
+    int taskId;
+    QTimer* reminderTimer;
+    QString taskTitle;
+};
 
 class MainWindow : public QMainWindow
 {
@@ -17,10 +27,7 @@ public:
     ~MainWindow();
 
 signals:
-    // 任务更新信号（用于重置提醒记录）
-    void taskUpdated();
-    // 提醒开关状态变更信号
-    void reminderEnabledChanged(bool enabled);
+    void taskUpdated(); // 仅保留任务更新信号，移除全局提醒相关信号
 
 private slots:
     void onBtnAddClicked();
@@ -34,23 +41,20 @@ private slots:
     void on_btnViewArchive_clicked();
     void on_btnSearch_clicked();
     void on_btnGenerateReport_clicked();
-    // 提醒开关状态变更槽函数
-    void on_reminderEnabledChanged(int state);
-    // 提醒提前时间变更槽函数
-    void on_reminderMinutesChanged(int minutes);
+    void onTaskReminderTriggered(int taskId); // 任务提醒触发槽函数
 
 private:
     Ui::MainWindow *ui;
     TaskTableModel *m_taskModel;
-    // 记录提醒开关状态
-    bool m_reminderEnabled = false;
-    // 记录提醒提前时间
-    int m_reminderMinutes = 30;
+    QMap<int, TaskReminder> m_taskReminders; // 存储所有任务的提醒定时器
 
     void initFilterComboBoxes();
     void initTagFilter();
     void updateStatisticPanel();
     bool showTaskDialog(Task &task, bool isEdit);
+    void initTaskReminders(); // 初始化已有任务的提醒
+    void removeTaskReminder(int taskId); // 移除指定任务的提醒
+    void setTaskReminder(const Task &task); // 为任务设置提醒
 };
 
 #endif // MAINWINDOW_H

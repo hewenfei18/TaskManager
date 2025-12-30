@@ -16,24 +16,22 @@
   <widget class="QWidget" name="centralWidget">
    <layout class="QVBoxLayout" name="verticalLayout_2">
     <item>
-     <!-- 筛选+搜索+定时提醒（新增标签筛选+搜索框） -->
      <widget class="QGroupBox" name="groupBoxFilter">
-      <property name="title">
-       <string>任务筛选/搜索/定时提醒</string>
-      </property>
       <property name="minimumSize">
        <size>
         <width>0</width>
         <height>80</height>
        </size>
       </property>
+      <property name="title">
+       <string>任务筛选/搜索</string>
+      </property>
       <layout class="QVBoxLayout" name="verticalLayout_7">
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,0,0,0,0,1,0,0">
+        <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,0,0,0,0,1">
          <property name="spacing">
           <number>2</number>
          </property>
-         <!-- 分类筛选 -->
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_3">
            <property name="spacing">
@@ -41,14 +39,14 @@
            </property>
            <item>
             <widget class="QLabel" name="labelCategory">
-             <property name="text">
-              <string>分类：</string>
-             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
                <height>15</height>
               </size>
+             </property>
+             <property name="text">
+              <string>分类：</string>
              </property>
             </widget>
            </item>
@@ -76,7 +74,6 @@
            </item>
           </layout>
          </item>
-         <!-- 优先级筛选 -->
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_4">
            <property name="spacing">
@@ -84,14 +81,14 @@
            </property>
            <item>
             <widget class="QLabel" name="labelPriority">
-             <property name="text">
-              <string>优先级：</string>
-             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
                <height>15</height>
               </size>
+             </property>
+             <property name="text">
+              <string>优先级：</string>
              </property>
             </widget>
            </item>
@@ -119,7 +116,6 @@
            </item>
           </layout>
          </item>
-         <!-- 状态筛选 -->
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_5">
            <property name="spacing">
@@ -127,14 +123,14 @@
            </property>
            <item>
             <widget class="QLabel" name="labelStatus">
-             <property name="text">
-              <string>状态：</string>
-             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
                <height>15</height>
               </size>
+             </property>
+             <property name="text">
+              <string>状态：</string>
              </property>
             </widget>
            </item>
@@ -162,7 +158,6 @@
            </item>
           </layout>
          </item>
-         <!-- 新增：标签筛选 -->
          <item>
           <layout class="QVBoxLayout" name="verticalLayout_8">
            <property name="spacing">
@@ -170,14 +165,14 @@
            </property>
            <item>
             <widget class="QLabel" name="labelTag">
-             <property name="text">
-              <string>标签：</string>
-             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
                <height>15</height>
               </size>
+             </property>
+             <property name="text">
+              <string>标签：</string>
              </property>
             </widget>
            </item>
@@ -205,12 +200,8 @@
            </item>
           </layout>
          </item>
-         <!-- 刷新筛选按钮 -->
          <item>
           <widget class="QPushButton" name="btnRefreshFilter">
-           <property name="text">
-            <string>刷新筛选</string>
-           </property>
            <property name="sizePolicy">
             <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
              <horstretch>0</horstretch>
@@ -229,9 +220,11 @@
              <height>20</height>
             </size>
            </property>
+           <property name="text">
+            <string>刷新筛选</string>
+           </property>
           </widget>
          </item>
-         <!-- 新增：全局搜索框 -->
          <item>
           <layout class="QHBoxLayout" name="horizontalLayout_7">
            <property name="spacing">
@@ -263,97 +256,17 @@
         </layout>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,0,1,0,0,0">
+        <layout class="QHBoxLayout" name="horizontalLayout_8" stretch="0,0,0">
          <property name="spacing">
           <number>2</number>
          </property>
-         <!-- 提醒开关 -->
-         <item>
-          <widget class="QCheckBox" name="checkBoxRemindEnable">
-           <property name="text">
-            <string>启用提醒</string>
-           </property>
-           <property name="minimumSize">
-            <size>
-             <width>0</width>
-             <height>20</height>
-            </size>
-           </property>
-          </widget>
-         </item>
-         <!-- 提前提醒 -->
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout">
-           <property name="spacing">
-            <number>1</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="labelRemind">
-             <property name="text">
-              <string>提前：</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="spinBoxRemindMinutes">
-             <property name="minimum">
-              <number>0</number>
-             </property>
-             <property name="maximum">
-              <number>1440</number>
-             </property>
-             <property name="value">
-              <number>30</number>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>20</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>60</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="labelMinute">
-             <property name="text">
-              <string>分</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <!-- 占位符 -->
          <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
-            <enum>Qt::Horizontal</enum>
+            <enum>Qt::Orientation::Horizontal</enum>
            </property>
            <property name="sizeType">
-            <enum>QSizePolicy::Expanding</enum>
+            <enum>QSizePolicy::Policy::Expanding</enum>
            </property>
            <property name="sizeHint" stdset="0">
             <size>
@@ -363,96 +276,41 @@
            </property>
           </spacer>
          </item>
-         <!-- 检查频率 -->
-         <item>
-          <layout class="QHBoxLayout" name="horizontalLayout_2">
-           <property name="spacing">
-            <number>1</number>
-           </property>
-           <item>
-            <widget class="QLabel" name="labelCheckInterval">
-             <property name="text">
-              <string>频率：</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QSpinBox" name="spinBoxCheckInterval">
-             <property name="minimum">
-              <number>10</number>
-             </property>
-             <property name="maximum">
-              <number>300</number>
-             </property>
-             <property name="value">
-              <number>30</number>
-             </property>
-             <property name="sizePolicy">
-              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-               <horstretch>0</horstretch>
-               <verstretch>0</verstretch>
-              </sizepolicy>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>60</width>
-               <height>20</height>
-              </size>
-             </property>
-             <property name="maximumSize">
-              <size>
-               <width>60</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-           <item>
-            <widget class="QLabel" name="labelSecond">
-             <property name="text">
-              <string>秒</string>
-             </property>
-             <property name="minimumSize">
-              <size>
-               <width>0</width>
-               <height>20</height>
-              </size>
-             </property>
-            </widget>
-           </item>
-          </layout>
-         </item>
-         <!-- 新增：归档已完成按钮 -->
          <item>
           <widget class="QPushButton" name="btnArchiveCompleted">
+           <property name="minimumSize">
+            <size>
+             <width>80</width>
+             <height>20</height>
+            </size>
+           </property>
            <property name="text">
             <string>归档已完成</string>
            </property>
-           <property name="minimumSize">
-            <size>
-             <width>80</width>
-             <height>20</height>
-            </size>
-           </property>
           </widget>
          </item>
-         <!-- 新增：查看归档按钮 -->
          <item>
           <widget class="QPushButton" name="btnViewArchive">
-           <property name="text">
-            <string>查看归档</string>
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
            </property>
            <property name="minimumSize">
             <size>
-             <width>80</width>
+             <width>100</width>
              <height>20</height>
             </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>100</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>查看归档</string>
            </property>
           </widget>
          </item>
@@ -461,17 +319,16 @@
       </layout>
      </widget>
     </item>
-    <!-- 统计面板（新增生成报表按钮） -->
     <item>
      <widget class="QGroupBox" name="groupBoxStat">
-      <property name="title">
-       <string>任务统计</string>
-      </property>
       <property name="minimumSize">
        <size>
         <width>0</width>
         <height>40</height>
        </size>
+      </property>
+      <property name="title">
+       <string>任务统计</string>
       </property>
       <layout class="QHBoxLayout" name="horizontalLayout_3">
        <property name="spacing">
@@ -501,10 +358,10 @@
        <item>
         <spacer name="horizontalSpacer_2">
          <property name="orientation">
-          <enum>Qt::Horizontal</enum>
+          <enum>Qt::Orientation::Horizontal</enum>
          </property>
          <property name="sizeType">
-          <enum>QSizePolicy::Expanding</enum>
+          <enum>QSizePolicy::Policy::Expanding</enum>
          </property>
          <property name="sizeHint" stdset="0">
           <size>
@@ -514,7 +371,6 @@
          </property>
         </spacer>
        </item>
-       <!-- 新增：生成统计报表按钮 -->
        <item>
         <widget class="QPushButton" name="btnGenerateReport">
          <property name="text">
@@ -525,21 +381,19 @@
       </layout>
      </widget>
     </item>
-    <!-- 任务表格 -->
     <item>
      <widget class="QTableView" name="tableViewTasks">
-      <property name="selectionBehavior">
-       <enum>QAbstractItemView::SelectRows</enum>
-      </property>
       <property name="selectionMode">
-       <enum>QAbstractItemView::SingleSelection</enum>
+       <enum>QAbstractItemView::SelectionMode::SingleSelection</enum>
+      </property>
+      <property name="selectionBehavior">
+       <enum>QAbstractItemView::SelectionBehavior::SelectRows</enum>
       </property>
       <attribute name="horizontalHeaderStretchLastSection">
        <bool>true</bool>
       </attribute>
      </widget>
     </item>
-    <!-- 功能按钮 -->
     <item>
      <layout class="QHBoxLayout" name="horizontalLayout_5">
       <property name="spacing">
@@ -547,76 +401,76 @@
       </property>
       <item>
        <widget class="QPushButton" name="btnAdd">
-        <property name="text">
-         <string>添加</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>60</width>
           <height>25</height>
          </size>
+        </property>
+        <property name="text">
+         <string>添加</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btnEdit">
-        <property name="text">
-         <string>编辑</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>60</width>
           <height>25</height>
          </size>
+        </property>
+        <property name="text">
+         <string>编辑</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btnDelete">
-        <property name="text">
-         <string>删除</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>60</width>
           <height>25</height>
          </size>
         </property>
+        <property name="text">
+         <string>删除</string>
+        </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btnExportPdf">
-        <property name="text">
-         <string>导出PDF</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>80</width>
           <height>25</height>
          </size>
+        </property>
+        <property name="text">
+         <string>导出PDF</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QPushButton" name="btnExportCsv">
-        <property name="text">
-         <string>导出CSV</string>
-        </property>
         <property name="minimumSize">
          <size>
           <width>80</width>
           <height>25</height>
          </size>
+        </property>
+        <property name="text">
+         <string>导出CSV</string>
         </property>
        </widget>
       </item>
       <item>
        <spacer name="horizontalSpacer_3">
         <property name="orientation">
-         <enum>Qt::Horizontal</enum>
+         <enum>Qt::Orientation::Horizontal</enum>
         </property>
         <property name="sizeType">
-         <enum>QSizePolicy::Expanding</enum>
+         <enum>QSizePolicy::Policy::Expanding</enum>
         </property>
         <property name="sizeHint" stdset="0">
          <size>
@@ -636,13 +490,13 @@
      <x>0</x>
      <y>0</y>
      <width>900</width>
-     <height>22</height>
+     <height>25</height>
     </rect>
    </property>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
-    <enum>Qt::TopToolBarArea</enum>
+    <enum>TopToolBarArea</enum>
    </attribute>
    <attribute name="toolBarBreak">
     <bool>false</bool>

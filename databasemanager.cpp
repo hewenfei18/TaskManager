@@ -75,6 +75,22 @@ bool DatabaseManager::init()
         }
     }
 
+    // 检查并新增remind_time字段（新增：任务提醒时间）
+    query.exec("PRAGMA table_info(tasks)");
+    bool hasRemindField = false;
+    while (query.next()) {
+        if (query.value(1).toString() == "remind_time") {
+            hasRemindField = true;
+            break;
+        }
+    }
+    if (!hasRemindField) {
+        QString addRemindFieldSql = "ALTER TABLE tasks ADD COLUMN remind_time DATETIME";
+        if (!query.exec(addRemindFieldSql)) {
+            qDebug() << "新增remind_time字段失败：" << query.lastError().text();
+        }
+    }
+
     // 创建tags表（任务标签表，关联tasks表，不存在则创建）
     QString createTagsTableSql = R"(
         CREATE TABLE IF NOT EXISTS tags (
@@ -98,6 +114,7 @@ bool DatabaseManager::init()
             category TEXT NOT NULL CHECK(category IN ('工作', '学习', '生活', '其他')),
             priority TEXT NOT NULL CHECK(priority IN ('高', '中', '低')),
             due_time DATETIME NOT NULL,
+            remind_time DATETIME, -- 新增：提醒时间字段
             status INTEGER NOT NULL DEFAULT 0 CHECK(status IN (0, 1)),
             description TEXT,
             progress INTEGER DEFAULT 0,
@@ -143,13 +160,14 @@ bool DatabaseManager::addTask(const Task& task)
 
     QSqlQuery query(db);
     query.prepare(R"(
-        INSERT INTO tasks (title, category, priority, due_time, status, description, progress, is_archived)
-        VALUES (:title, :category, :priority, :due_time, :status, :description, :progress, :is_archived)
+        INSERT INTO tasks (title, category, priority, due_time, remind_time, status, description, progress, is_archived)
+        VALUES (:title, :category, :priority, :due_time, :remind_time, :status, :description, :progress, :is_archived)
     )");
     query.bindValue(":title", task.title);
     query.bindValue(":category", task.category);
     query.bindValue(":priority", task.priority);
     query.bindValue(":due_time", task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
+    query.bindValue(":remind_time", task.remindTime.toString("yyyy-MM-dd HH:mm:ss")); // 绑定提醒时间
     query.bindValue(":status", task.status);
     query.bindValue(":description", task.description);
     query.bindValue(":progress", task.progress);
@@ -173,7 +191,8 @@ bool DatabaseManager::updateTask(const Task& task)
     query.prepare(R"(
         UPDATE tasks
         SET title = :title, category = :category, priority = :priority, due_time = :due_time,
-            status = :status, description = :description, progress = :progress, is_archived = :is_archived
+            remind_time = :remind_time, status = :status, description = :description,
+            progress = :progress, is_archived = :is_archived
         WHERE id = :id
     )");
     query.bindValue(":id", task.id);
@@ -181,6 +200,7 @@ bool DatabaseManager::updateTask(const Task& task)
     query.bindValue(":category", task.category);
     query.bindValue(":priority", task.priority);
     query.bindValue(":due_time", task.dueTime.toString("yyyy-MM-dd HH:mm:ss"));
+    query.bindValue(":remind_time", task.remindTime.toString("yyyy-MM-dd HH:mm:ss")); // 绑定提醒时间
     query.bindValue(":status", task.status);
     query.bindValue(":description", task.description);
     query.bindValue(":progress", task.progress);
@@ -219,8 +239,8 @@ QList<Task> DatabaseManager::getAllTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return taskList;
 
-    // 仅查询未归档任务，按ID倒序排列
-    QSqlQuery query("SELECT id, title, category, priority, due_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 0 ORDER BY id DESC", db);
+    // 仅查询未归档任务，按ID倒序排列（新增查询remind_time）
+    QSqlQuery query("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 0 ORDER BY id DESC", db);
     while (query.next()) {
         Task task;
         task.id = query.value(0).toInt();
@@ -228,14 +248,46 @@ QList<Task> DatabaseManager::getAllTasks()
         task.category = query.value(2).toString();
         task.priority = query.value(3).toString();
         task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        task.progress = query.value(7).toInt();
-        task.is_archived = query.value(8).toInt();
+        task.remindTime = QDateTime::fromString(query.value(5).toString(), "yyyy-MM-dd HH:mm:ss"); // 读取提醒时间
+        task.status = query.value(6).toInt();
+        task.description = query.value(7).toString();
+        task.progress = query.value(8).toInt();
+        task.is_archived = query.value(9).toInt();
         taskList.append(task);
     }
 
     return taskList;
+}
+
+// 新增：根据ID获取任务
+Task DatabaseManager::getTaskById(int taskId)
+{
+    Task task;
+    QSqlDatabase db = getThreadSafeDatabase();
+    if (!db.isOpen() || taskId <= 0) return task;
+
+    QSqlQuery query(db);
+    query.prepare("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived FROM tasks WHERE id = :id");
+    query.bindValue(":id", taskId);
+    if (!query.exec()) {
+        qDebug() << "根据ID获取任务失败：" << query.lastError().text();
+        return task;
+    }
+
+    if (query.next()) {
+        task.id = query.value(0).toInt();
+        task.title = query.value(1).toString();
+        task.category = query.value(2).toString();
+        task.priority = query.value(3).toString();
+        task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.remindTime = QDateTime::fromString(query.value(5).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(6).toInt();
+        task.description = query.value(7).toString();
+        task.progress = query.value(8).toInt();
+        task.is_archived = query.value(9).toInt();
+    }
+
+    return task;
 }
 
 bool DatabaseManager::archiveCompletedTasks()
@@ -260,8 +312,8 @@ QList<Task> DatabaseManager::getAllArchivedTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return taskList;
 
-    // 仅查询归档任务，按ID倒序排列
-    QSqlQuery query("SELECT id, title, category, priority, due_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 1 ORDER BY id DESC", db);
+    // 仅查询归档任务，按ID倒序排列（新增查询remind_time）
+    QSqlQuery query("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 1 ORDER BY id DESC", db);
     while (query.next()) {
         Task task;
         task.id = query.value(0).toInt();
@@ -269,10 +321,11 @@ QList<Task> DatabaseManager::getAllArchivedTasks()
         task.category = query.value(2).toString();
         task.priority = query.value(3).toString();
         task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        task.progress = query.value(7).toInt();
-        task.is_archived = query.value(8).toInt();
+        task.remindTime = QDateTime::fromString(query.value(5).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(6).toInt();
+        task.description = query.value(7).toString();
+        task.progress = query.value(8).toInt();
+        task.is_archived = query.value(9).toInt();
         taskList.append(task);
     }
 
@@ -387,10 +440,10 @@ QList<Task> DatabaseManager::getTasksByTag(const QString& tagName)
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen() || tagName.trimmed().isEmpty()) return taskList;
 
-    // 关联查询标签对应的未归档任务
+    // 关联查询标签对应的未归档任务（新增查询remind_time）
     QSqlQuery query(db);
     query.prepare(R"(
-        SELECT t.id, t.title, t.category, t.priority, t.due_time, t.status, t.description, t.progress, t.is_archived
+        SELECT t.id, t.title, t.category, t.priority, t.due_time, t.remind_time, t.status, t.description, t.progress, t.is_archived
         FROM tasks t
         JOIN tags g ON t.id = g.task_id
         WHERE g.tag_name = :tag_name AND t.is_archived = 0
@@ -409,10 +462,11 @@ QList<Task> DatabaseManager::getTasksByTag(const QString& tagName)
         task.category = query.value(2).toString();
         task.priority = query.value(3).toString();
         task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        task.progress = query.value(7).toInt();
-        task.is_archived = query.value(8).toInt();
+        task.remindTime = QDateTime::fromString(query.value(5).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(6).toInt();
+        task.description = query.value(7).toString();
+        task.progress = query.value(8).toInt();
+        task.is_archived = query.value(9).toInt();
         taskList.append(task);
     }
 
@@ -425,9 +479,9 @@ QList<Task> DatabaseManager::getOverdueUncompletedTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return tasks;
 
-    // 查询逾期未完成的未归档任务
+    // 查询逾期未完成的未归档任务（新增查询remind_time）
     QSqlQuery query(db);
-    query.prepare("SELECT id, title, category, priority, due_time, status, description, progress, is_archived "
+    query.prepare("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived "
                   "FROM tasks WHERE status=0 AND due_time < datetime('now') AND is_archived=0 ORDER BY id DESC");
     if (!query.exec()) {
         qDebug() << "获取逾期未完成任务失败：" << query.lastError().text();
@@ -441,10 +495,11 @@ QList<Task> DatabaseManager::getOverdueUncompletedTasks()
         task.category = query.value(2).toString();
         task.priority = query.value(3).toString();
         task.dueTime = QDateTime::fromString(query.value(4).toString(), "yyyy-MM-dd HH:mm:ss");
-        task.status = query.value(5).toInt();
-        task.description = query.value(6).toString();
-        task.progress = query.value(7).toInt();
-        task.is_archived = query.value(8).toInt();
+        task.remindTime = QDateTime::fromString(query.value(5).toString(), "yyyy-MM-dd HH:mm:ss");
+        task.status = query.value(6).toInt();
+        task.description = query.value(7).toString();
+        task.progress = query.value(8).toInt();
+        task.is_archived = query.value(9).toInt();
         tasks.append(task);
     }
     return tasks;
