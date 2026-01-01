@@ -8,7 +8,7 @@
 DatabaseManager::DatabaseManager()
     : m_connectionName("TaskManagerConnection")
 {
-    // ========== 强制绑定项目根目录下的 task_database.db ==========
+
     // 项目根目录路径：D:\Qt\Qt project\TaskManager
     QString projectRootPath = "D:/Qt/Qt project/TaskManager";
     QDir projectDir(projectRootPath);
@@ -59,7 +59,7 @@ bool DatabaseManager::init()
         }
     }
 
-    // 检查并新增progress字段（兼容旧表，避免语法错误）
+    // 检查并新增progress字段
     query.exec("PRAGMA table_info(tasks)");
     bool hasProgressField = false;
     while (query.next()) {
@@ -239,7 +239,7 @@ QList<Task> DatabaseManager::getAllTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return taskList;
 
-    // 仅查询未归档任务，按ID倒序排列（新增查询remind_time）
+    // 仅查询未归档任务，按ID倒序排列
     QSqlQuery query("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 0 ORDER BY id DESC", db);
     while (query.next()) {
         Task task;
@@ -259,7 +259,7 @@ QList<Task> DatabaseManager::getAllTasks()
     return taskList;
 }
 
-// 新增：根据ID获取任务
+
 Task DatabaseManager::getTaskById(int taskId)
 {
     Task task;
@@ -312,7 +312,7 @@ QList<Task> DatabaseManager::getAllArchivedTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return taskList;
 
-    // 仅查询归档任务，按ID倒序排列（新增查询remind_time）
+    // 仅查询归档任务，按ID倒序排列
     QSqlQuery query("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived FROM tasks WHERE is_archived = 1 ORDER BY id DESC", db);
     while (query.next()) {
         Task task;
@@ -479,7 +479,7 @@ QList<Task> DatabaseManager::getOverdueUncompletedTasks()
     QSqlDatabase db = getThreadSafeDatabase();
     if (!db.isOpen()) return tasks;
 
-    // 查询逾期未完成的未归档任务（新增查询remind_time）
+    // 查询逾期未完成的未归档任务
     QSqlQuery query(db);
     query.prepare("SELECT id, title, category, priority, due_time, remind_time, status, description, progress, is_archived "
                   "FROM tasks WHERE status=0 AND due_time < datetime('now') AND is_archived=0 ORDER BY id DESC");
