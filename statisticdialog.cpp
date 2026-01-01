@@ -7,7 +7,7 @@
 #include <QPieSlice>
 #include <QLineSeries>
 #include <QValueAxis>
-#include <QCategoryAxis>  // 改用分类轴，手动控制标签
+#include <QCategoryAxis>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QPixmap>
@@ -74,7 +74,7 @@ void StatisticDialog::generateReport()
         }
     }
 
-    // 3. 生成饼图（保持不变）
+    // 3. 生成饼图
     m_pieChart->removeAllSeries();
     QPieSeries* pieSeries = new QPieSeries();
     QMap<QString, int> categoryCountMap{{"工作",0}, {"学习",0}, {"生活",0}, {"其他",0}};
@@ -149,7 +149,7 @@ void StatisticDialog::generateReport()
     m_lineChart->addAxis(yAxis, Qt::AlignLeft);
     lineSeries->attachAxis(yAxis);
 
-    // X轴：改用QCategoryAxis，手动绑定“小时数字/月-日”标签
+    // X轴：用QCategoryAxis，手动绑定“小时数字/月-日”标签
     QCategoryAxis* xAxis = new QCategoryAxis();
     xAxis->setTitleText(ui->radioBtnToday->isChecked() ? "小时" : "日期");
     xAxis->setLabelsAngle(0);  // 标签不旋转，直接水平显示
