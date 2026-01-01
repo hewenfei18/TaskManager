@@ -15,6 +15,10 @@
 #include <QMap>
 #include <QDir>
 
+
+void StatisticDialog::on_radioBtnToday_clicked() { generateReport(); }
+void StatisticDialog::on_radioBtnWeek_clicked() { generateReport(); }
+
 StatisticDialog::StatisticDialog(QWidget *parent)
     : QDialog(parent)
     , ui(new Ui::StatisticDialog)
@@ -192,5 +196,3 @@ void StatisticDialog::exportReportAsPng()
     }
 }
 
-void StatisticDialog::on_radioBtnToday_clicked() { generateReport(); }
-void StatisticDialog::on_radioBtnWeek_clicked() { generateReport(); }
