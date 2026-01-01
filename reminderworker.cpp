@@ -5,7 +5,7 @@
 ReminderWorker::ReminderWorker(QObject *parent)
     : QObject(parent)
     , m_checkTimer(new QTimer(this))
-    , m_upcomingMinutes(30) // 默认提前30分钟提醒即将到期任务
+    , m_upcomingMinutes(30) // 提前30分钟提醒即将到期任务
 {
     // 默认检查间隔10秒（可通过setCheckInterval修改）
     m_checkTimer->setInterval(10000);
@@ -89,10 +89,10 @@ void ReminderWorker::checkTasks()
     for (const Task& task : allTasks) {
         // 筛选条件：未完成 + 未超期 + 截止时间在当前时间到阈值时间之间
         if (task.status != 0) {
-            continue; // 跳过已完成任务
+            continue; // 跳过已完成的任务
         }
         if (task.dueTime < currentTime) {
-            continue; // 跳过已超期任务
+            continue; // 跳过已超期的任务
         }
         if (task.dueTime > upcomingThreshold) {
             continue; // 跳过未到提醒时间的任务
