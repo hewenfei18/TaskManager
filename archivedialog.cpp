@@ -34,7 +34,7 @@ ArchiveDialog::~ArchiveDialog()
 {
     delete ui; // 释放UI对象
     if (m_archivedTableModel) {
-        delete m_archivedTableModel; // 释放内部模型
+        delete m_archivedTableModel;
         m_archivedTableModel = nullptr;
     }
 }
@@ -105,5 +105,5 @@ void ArchiveDialog::on_btnPermanentDelete_clicked()
 // 关闭对话框（匹配UI btnClose）
 void ArchiveDialog::on_btnClose_clicked()
 {
-    this->reject(); // 关闭对话框，不触发额外操作
+    this->reject(); // 关闭对话框，不触发额外的操作
 }

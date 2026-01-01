@@ -9,7 +9,7 @@ DatabaseManager::DatabaseManager()
     : m_connectionName("TaskManagerConnection")
 {
 
-    // 项目根目录路径：D:\Qt\Qt project\TaskManager
+
     QString projectRootPath = "D:/Qt/Qt project/TaskManager";
     QDir projectDir(projectRootPath);
 
@@ -43,7 +43,7 @@ bool DatabaseManager::init()
 
     QSqlQuery query(m_db);
 
-    // 检查并新增is_archived字段（兼容旧表，避免语法错误）
+    // 检查并新增is_archived字段
     query.exec("PRAGMA table_info(tasks)");
     bool hasArchivedField = false;
     while (query.next()) {
