@@ -280,9 +280,8 @@ void MainWindow::onGlobalTaskMonitorTriggered()
     updateStatisticPanel();
 }
 
-// ------------------------------
+
 // 10. 槽函数：onBtnAddClicked
-// ------------------------------
 void MainWindow::onBtnAddClicked()
 {
     Task task;
@@ -295,9 +294,8 @@ void MainWindow::onBtnAddClicked()
     }
 }
 
-// ------------------------------
+
 // 11. 槽函数：onBtnEditClicked
-// ------------------------------
 void MainWindow::onBtnEditClicked()
 {
     QModelIndex index = ui->tableViewTasks->currentIndex();
@@ -316,9 +314,7 @@ void MainWindow::onBtnEditClicked()
     }
 }
 
-// ------------------------------
 // 12. 槽函数：onBtnDeleteClicked
-// ------------------------------
 void MainWindow::onBtnDeleteClicked()
 {
     QModelIndex index = ui->tableViewTasks->currentIndex();
@@ -345,7 +341,7 @@ void MainWindow::onBtnDeleteClicked()
 }
 
 // ------------------------------
-// 13. 槽函数：onBtnExportPdfClicked
+// 13. 槽函数： onBtnExportPdfClicked
 // ------------------------------
 void MainWindow::onBtnExportPdfClicked()
 {
@@ -588,7 +584,7 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     });
     layout->addRow("提醒时间：", dtRemind);
 
-    // 状态
+    // 状态分类
     QComboBox* comboStatus = new QComboBox(&dialog);
     comboStatus->addItems({"未完成", "已完成"});
     comboStatus->setCurrentIndex(task.status);
@@ -613,7 +609,7 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     }
     layout->addRow("标签（逗号分隔）：", editTags);
 
-    // 按钮
+//按钮
     QPushButton* btnOk = new QPushButton("确认", &dialog);
     QPushButton* btnCancel = new QPushButton("取消", &dialog);
     QHBoxLayout* btnLayout = new QHBoxLayout();
