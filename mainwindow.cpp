@@ -42,7 +42,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     // 绑定表格模型
     ui->tableViewTasks->setModel(m_taskModel);
-    // 调整表格列宽
+    // 调整表格的列宽
     QHeaderView* header = ui->tableViewTasks->horizontalHeader();
     header->setSectionResizeMode(QHeaderView::ResizeToContents);
     header->resizeSection(3, 150); // 截止时间列
@@ -74,7 +74,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->btnViewArchive, &QPushButton::clicked, this, &MainWindow::on_btnViewArchive_clicked);
     connect(ui->btnSearch, &QPushButton::clicked, this, &MainWindow::on_btnSearch_clicked);
 
-    // 全局后台实时监测配置
+    // 全局:后台实时监测配置
     connect(m_globalTaskMonitorTimer, &QTimer::timeout, this, &MainWindow::onGlobalTaskMonitorTriggered);
     m_globalTaskMonitorTimer->start(30000); // 30秒监测一次
     onGlobalTaskMonitorTriggered(); // 初始化时立即监测
@@ -141,9 +141,8 @@ void MainWindow::initTagFilter()
     ui->comboTagFilter->addItems(DatabaseManager::instance().getAllDistinctTags());
 }
 
-// ------------------------------
+
 // 5. 私有函数：updateStatisticPanel
-// ------------------------------
 void MainWindow::updateStatisticPanel()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -161,9 +160,7 @@ void MainWindow::updateStatisticPanel()
     ui->labelOverdue->setText(QString("逾期：%1").arg(overdue));
 }
 
-// ------------------------------------------
 // 6. 私有函数：initTaskReminders
-// ------------------------------------------
 void MainWindow::initTaskReminders()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -176,7 +173,6 @@ void MainWindow::initTaskReminders()
 
 
 // 7. 私有函数：setTaskReminder
-// ---------------------------------------
 void MainWindow::setTaskReminder(const Task &task)
 {
     if (m_taskReminders.contains(task.id)) {
@@ -204,9 +200,7 @@ void MainWindow::setTaskReminder(const Task &task)
     qDebug() << "任务[" << task.title << "]提醒已设置";
 }
 
-// --------------------------------------------
 // 8. 私有函数：removeTaskReminder
-// -------------------------------------------
 void MainWindow::removeTaskReminder(int taskId)
 {
     if (!m_taskReminders.contains(taskId)) return;
@@ -243,9 +237,6 @@ void MainWindow::onTaskReminderTriggered(int taskId)
     removeTaskReminder(taskId);
 }
 
-// ------------------------------
-// 新增：全局后台任务监测槽函数
-// ------------------------------
 void MainWindow::onGlobalTaskMonitorTriggered()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -440,9 +431,7 @@ void MainWindow::on_btnGenerateReport_clicked()
     m_reportDialog->activateWindow();
 }
 
-// ------------------------------
 // 16. 槽函数：onFilterChanged
-// ------------------------------
 void MainWindow::onFilterChanged()
 {
     QString category = ui->comboCategoryFilter->currentText();
