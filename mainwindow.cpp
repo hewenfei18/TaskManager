@@ -340,9 +340,8 @@ void MainWindow::onBtnDeleteClicked()
     }
 }
 
-// ------------------------------
+
 // 13. 槽函数： onBtnExportPdfClicked
-// ------------------------------
 void MainWindow::onBtnExportPdfClicked()
 {
     QList<Task> exportTasks;
@@ -370,9 +369,8 @@ void MainWindow::onBtnExportPdfClicked()
     QMessageBox::information(this, "成功", QString("PDF报表已成功导出至：\n%1").arg(filePath));
 }
 
-// ------------------------------
+
 // 14. 槽函数：onBtnExportCsvClicked
-// ------------------------------
 void MainWindow::onBtnExportCsvClicked()
 {
     QList<Task> exportTasks;
@@ -400,9 +398,8 @@ void MainWindow::onBtnExportCsvClicked()
     QMessageBox::information(this, "成功", QString("CSV报表已成功导出至：\n%1").arg(filePath));
 }
 
-// ------------------------------
+
 // 15. 槽函数：on_btnGenerateReport_clicked
-// ------------------------------
 void MainWindow::on_btnGenerateReport_clicked()
 {
     if (!m_reportDialog) {
@@ -439,9 +436,8 @@ void MainWindow::onFilterChanged()
     updateStatisticPanel();
 }
 
-// ------------------------------
+
 // 17. 槽函数：onBtnRefreshFilterClicked
-// ------------------------------
 void MainWindow::onBtnRefreshFilterClicked()
 {
     m_taskModel->refreshTasks();
@@ -449,9 +445,7 @@ void MainWindow::onBtnRefreshFilterClicked()
     initTagFilter();
 }
 
-// ------------------------------
-// 18. 槽函数：on_btnArchiveCompleted_clicked
-// ------------------------------
+// 18. 槽函数：on_btnArchiveCompleted_clicked-
 void MainWindow::on_btnArchiveCompleted_clicked()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -485,9 +479,8 @@ void MainWindow::on_btnArchiveCompleted_clicked()
     }
 }
 
-// ------------------------------
+
 // 19. 槽函数：on_btnViewArchive_clicked
-// ------------------------------
 void MainWindow::on_btnViewArchive_clicked()
 {
     ArchiveDialog* dialog = new ArchiveDialog(this);
@@ -501,9 +494,7 @@ void MainWindow::on_btnViewArchive_clicked()
     delete dialog;
 }
 
-// ------------------------------
 // 20. 槽函数：on_btnSearch_clicked
-// ------------------------------
 void MainWindow::on_btnSearch_clicked()
 {
     QString searchText = ui->lineEditSearch->text().trimmed();
@@ -536,9 +527,8 @@ void MainWindow::on_btnSearch_clicked()
     ui->labelOverdue->setText(QString("逾期：%1").arg(overdue));
 }
 
-// ------------------------------
+
 // 21. 私有函数：showTaskDialog
-// ------------------------------
 bool MainWindow::showTaskDialog(Task &task, bool isEdit)
 {
     QDialog dialog(this);

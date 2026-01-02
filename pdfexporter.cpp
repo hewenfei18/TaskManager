@@ -13,7 +13,7 @@ void PdfExporter::exportToPdf(const QList<Task>& tasks, const QString& filePath)
     pdfWriter.setPageOrientation(QPageLayout::Portrait);
     pdfWriter.setPageMargins(QMargins(20, 20, 20, 20));
 
-    // 使用 HTML 构建文档内容（自动排版，避免坐标计算）
+    // 使用 HTML 构建文档内容
     QString htmlContent = R"(
         <html>
         <head>

@@ -75,7 +75,7 @@ bool DatabaseManager::init()
         }
     }
 
-    // 检查并新增remind_time字段（新增：任务提醒时间）
+    // 检查并新增remind_time字段
     query.exec("PRAGMA table_info(tasks)");
     bool hasRemindField = false;
     while (query.next()) {

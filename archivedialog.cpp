@@ -10,7 +10,7 @@ ArchiveDialog::ArchiveDialog(QWidget *parent)
     , ui(new Ui::ArchiveDialog)
     , m_archivedTableModel(new ArchivedTableModel(this)) // 初始化内部模型
 {
-    ui->setupUi(this); // 适配你的UI文件
+    ui->setupUi(this);
 
     // 绑定内部模型到UI表格 tableViewArchived
     if (ui->tableViewArchived) {

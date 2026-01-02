@@ -16,9 +16,8 @@ void CsvExporter::exportToCsv(const QList<Task> &tasks, const QString &filePath)
         return;
     }
 
-    // Qt5.9中QTextStream默认UTF-8，无需setCodec
+
     QTextStream stream(&file);
-    // 写入UTF-8 BOM
     file.write("\xEF\xBB\xBF");
 
     stream << "序号,标题,分类,优先级,截止时间,状态,备注\n";
