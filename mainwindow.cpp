@@ -24,9 +24,6 @@
 #include <QDebug>
 #include <QSet>
 
-// ------------------------------
-// 1. 构造函数
-// ------------------------------
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)

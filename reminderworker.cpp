@@ -77,7 +77,7 @@ void ReminderWorker::checkTasks()
             m_remindedOverdueTaskIds.insert(task.id); // 标记为已提醒
         }
     }
-    // 有新逾期任务才发送信号
+    // 有新逾期任务发送信号
     if (!newOverdueTasks.isEmpty()) {
         emit taskOverdue(newOverdueTasks);
         qDebug() << "检测到" << newOverdueTasks.count() << "个新逾期任务，发送提醒";
