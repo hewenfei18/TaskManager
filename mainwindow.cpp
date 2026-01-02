@@ -81,9 +81,8 @@ MainWindow::MainWindow(QWidget *parent)
     qDebug() << "全局任务后台监测已启动，监测间隔：30秒";
 }
 
-// ------------------------------
+
 // 2. 析构函数
-// ------------------------------
 MainWindow::~MainWindow()
 {
     // 销毁单个任务提醒定时器
@@ -114,9 +113,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-// ------------------------------
 // 3. 私有函数：initFilterComboBoxes
-// ------------------------------
 void MainWindow::initFilterComboBoxes()
 {
     // 分类筛选
@@ -135,9 +132,8 @@ void MainWindow::initFilterComboBoxes()
     ui->comboStatusFilter->addItems({"未完成", "已完成", "未完成（已超期）"});
 }
 
-// ------------------------------
+
 // 4. 私有函数：initTagFilter
-// ------------------------------
 void MainWindow::initTagFilter()
 {
     ui->comboTagFilter->clear();
@@ -165,9 +161,9 @@ void MainWindow::updateStatisticPanel()
     ui->labelOverdue->setText(QString("逾期：%1").arg(overdue));
 }
 
-// ------------------------------
+// ------------------------------------------
 // 6. 私有函数：initTaskReminders
-// ------------------------------
+// ------------------------------------------
 void MainWindow::initTaskReminders()
 {
     QList<Task> allTasks = DatabaseManager::instance().getAllTasks();
@@ -178,9 +174,9 @@ void MainWindow::initTaskReminders()
     }
 }
 
-// ------------------------------
+
 // 7. 私有函数：setTaskReminder
-// ------------------------------
+// ---------------------------------------
 void MainWindow::setTaskReminder(const Task &task)
 {
     if (m_taskReminders.contains(task.id)) {
@@ -208,9 +204,9 @@ void MainWindow::setTaskReminder(const Task &task)
     qDebug() << "任务[" << task.title << "]提醒已设置";
 }
 
-// ------------------------------
+// --------------------------------------------
 // 8. 私有函数：removeTaskReminder
-// ------------------------------
+// -------------------------------------------
 void MainWindow::removeTaskReminder(int taskId)
 {
     if (!m_taskReminders.contains(taskId)) return;
@@ -225,9 +221,8 @@ void MainWindow::removeTaskReminder(int taskId)
     m_taskReminders.remove(taskId);
 }
 
-// ------------------------------
+
 // 9. 私有函数：onTaskReminderTriggered
-// ------------------------------
 void MainWindow::onTaskReminderTriggered(int taskId)
 {
     if (!m_taskReminders.contains(taskId)) return;
@@ -678,3 +673,4 @@ bool MainWindow::showTaskDialog(Task &task, bool isEdit)
     }
     return false;
 }
+
